@@ -29,7 +29,8 @@ interface ResearchPageProps {
   mode?: 'free' | 'first-time' | 'in-person'
 }
 
-export default function ResearchPage({ mode }: ResearchPageProps = {}) {
+export default function ResearchPage(props?: ResearchPageProps) {
+  const mode = props?.mode
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
