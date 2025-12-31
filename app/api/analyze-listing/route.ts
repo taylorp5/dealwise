@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import type { AnalyzeListingRequest, AnalyzeListingResponse, DealPlan } from '@/lib/types/api'
+import type { ListingData } from '@/lib/types/listing'
 import { buildListingAnalyzerSystemPrompt, buildListingAnalyzerUserPrompt } from '@/lib/prompts/listing-analyzer'
 import { parseListingUrl } from '@/lib/utils/listing-parser'
 import { extractListing } from '@/lib/extractors/router'
