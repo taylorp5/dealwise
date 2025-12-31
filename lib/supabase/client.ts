@@ -11,12 +11,32 @@ const isConfigured = supabaseUrl &&
   !supabaseUrl.includes('placeholder') &&
   !supabaseAnonKey.includes('placeholder')
 
+// Debug logging in development to help identify configuration issues
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  if (!isConfigured) {
+    console.warn('[Supabase Client] Configuration check failed:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      urlLength: supabaseUrl.length,
+      keyLength: supabaseAnonKey.length,
+      urlPreview: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing',
+    })
+  }
+}
+
 // Only create client if properly configured, otherwise create a minimal client that won't make network requests
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: false, // Disable session persistence to avoid hanging
-        autoRefreshToken: false,
+        persistSession: true, // Enable session persistence for production
+        autoRefreshToken: true, // Enable token refresh for production
+        detectSessionInUrl: true, // Detect auth callback in URL
+        flowType: 'pkce', // Use PKCE flow for better security
+      },
+      global: {
+        headers: {
+          'x-client-info': 'dealwise-web',
+        },
       },
     })
   : createClient('https://placeholder.supabase.co', 'placeholder-key', {

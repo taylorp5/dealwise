@@ -58,22 +58,47 @@ export default function SignupPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // Debug: Log Supabase configuration in development
+      if (process.env.NODE_ENV === 'development') {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+        console.log('[Sign Up] Attempting sign-up with Supabase URL:', url ? `${url.substring(0, 30)}...` : 'MISSING')
+      }
+
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       })
 
       if (error) {
+        // Enhanced error logging for debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Sign Up] Supabase error:', {
+            message: error.message,
+            status: error.status,
+            name: error.name,
+          })
+        }
         setError(error.message)
         setLoading(false)
         return
       }
 
       // Success - redirect to home
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Sign Up] Success, user:', data.user?.email)
+      }
       router.push('/')
       router.refresh()
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      // Enhanced error logging for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Sign Up] Unexpected error:', {
+          message: err.message,
+          stack: err.stack,
+          name: err.name,
+        })
+      }
+      setError(err.message || 'An error occurred. Please check your connection and try again.')
       setLoading(false)
     }
   }
