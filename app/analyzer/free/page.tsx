@@ -1,6 +1,6 @@
 'use client'
 
-import ResearchPage from '@/app/research/page'
+import ResearchPageContent from '@/components/ResearchPageContent'
 
 export default function FreeAnalyzerPage() {
   return (
@@ -11,7 +11,7 @@ export default function FreeAnalyzerPage() {
           Analyzer Variant: free
         </div>
       )}
-      <ResearchPage mode="free" />
+      <ResearchPageContent mode="free" />
     </>
   )
 }

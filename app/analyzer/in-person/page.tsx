@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
-import ResearchPage from '@/app/research/page'
+import ResearchPageContent from '@/components/ResearchPageContent'
 
 export default function InPersonAnalyzerPage() {
   const { user, loading: authLoading } = useAuth()
@@ -41,7 +41,7 @@ export default function InPersonAnalyzerPage() {
           Analyzer Variant: in_person
         </div>
       )}
-      <ResearchPage mode="in-person" />
+      <ResearchPageContent mode="in-person" />
     </>
   )
 }

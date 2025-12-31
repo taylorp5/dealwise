@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         ...listingData,
         ...dataToUse,
         // Ensure state is set from dealerState if provided
-        state: dataToUse.dealerState || dataToUse.state || listingData.state,
+        state: (dataToUse as any).dealerState || (dataToUse as any).state || listingData.state,
       }
       // Create extraction result from confirmed data
       extractedListing = {

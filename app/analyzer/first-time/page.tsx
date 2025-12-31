@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
-import ResearchPage from '@/app/research/page'
+import ResearchPageContent from '@/components/ResearchPageContent'
 
 export default function FirstTimeAnalyzerPage() {
   const { user, loading: authLoading } = useAuth()
@@ -41,7 +41,7 @@ export default function FirstTimeAnalyzerPage() {
           Analyzer Variant: first_time
         </div>
       )}
-      <ResearchPage mode="first-time" />
+      <ResearchPageContent mode="first-time" />
     </>
   )
 }
