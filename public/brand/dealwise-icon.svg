@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" fill="none" role="img" aria-label="DealWise icon">
+  <defs>
+    <linearGradient id="dwGradient" x1="40" y1="18" x2="120" y2="142" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="0.55" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shield outline -->
+  <path d="M80 20 L124 36 C130 38 134 44 134 50 V86 C134 108 118 128 96 138 L80 146 L64 138 C42 128 26 108 26 86 V50 C26 44 30 38 36 36 L80 20Z"
+        fill="none" stroke="url(#dwGradient)" stroke-width="12" stroke-linejoin="round"/>
+  <!-- Check -->
+  <path d="M52 84 L70 102 L110 60"
+        fill="none" stroke="url(#dwGradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+
