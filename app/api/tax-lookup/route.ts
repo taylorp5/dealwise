@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { resolveTaxRate } from '@/lib/utils/tax-lookup'
 
 export async function GET(request: NextRequest) {

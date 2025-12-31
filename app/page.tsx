@@ -27,14 +27,22 @@ export default function Home() {
     )
   }
 
-  const features = [
+  const features: Array<{
+    icon: typeof Wand2
+    title: string
+    description: string
+    href: string
+    badge?: string
+    badgeColor?: 'blue' | 'emerald' | 'purple' | 'amber'
+    isRecommended?: boolean
+  }> = [
     {
       icon: Wand2,
       title: 'Negotiation Draft Builder',
       description: 'Get your single best next response, tailored to your situation. Generate responses or decode dealer messages.',
       href: '/copilot/free',
       badge: 'Most used',
-      badgeColor: 'blue',
+      badgeColor: 'blue' as const,
       isRecommended: false,
     },
     {
@@ -49,7 +57,7 @@ export default function Home() {
       description: 'Model your out-the-door price using smart defaults and your real inputs.',
       href: '/calculator',
       badge: 'Recommended',
-      badgeColor: 'emerald',
+      badgeColor: 'emerald' as const,
       isRecommended: true,
     },
     {

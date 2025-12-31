@@ -39,7 +39,7 @@ export default function ScriptWizard({
   unlockedPackIds = [],
 }: ScriptWizardProps) {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState<WizardStep>('communication_method')
+  const [currentStep, setCurrentStep] = useState<WizardStep | 'pack_questions'>('communication_method')
   const [answers, setAnswers] = useState<Partial<WizardAnswers>>({
     carContext: initialCarContext || '',
   })
@@ -55,8 +55,8 @@ export default function ScriptWizard({
   const packConfig = activePackId ? packConfigs[activePackId] : null
   const packUnlocked = activePackId ? unlockedPackIds.includes(activePackId) : false
 
-  const steps: WizardStep[] = useMemo(() => {
-    const base: WizardStep[] = [
+  const steps: (WizardStep | 'pack_questions')[] = useMemo(() => {
+    const base: (WizardStep | 'pack_questions')[] = [
       'communication_method',
       'payment_method',
       'experience_level',

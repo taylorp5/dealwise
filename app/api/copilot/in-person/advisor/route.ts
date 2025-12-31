@@ -153,7 +153,7 @@ Diagnose the dealer's tactic, determine the correct move, and provide the exact 
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

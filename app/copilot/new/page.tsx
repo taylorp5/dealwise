@@ -112,15 +112,15 @@ export default function NewCopilotPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Object.values(packs).map((pack) => (
-              <Card
+              <div
                 key={pack.id}
-                className="p-6 hover:shadow-lg transition cursor-pointer"
+                className="p-6 hover:shadow-lg transition cursor-pointer bg-white rounded-xl shadow-sm border border-slate-200"
                 onClick={() => handlePackSelect(pack.id as PackType)}
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">{pack.name}</h2>
                 <p className="text-gray-600 text-sm mb-4">{pack.description}</p>
                 <Button className="w-full">Select Pack</Button>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -167,9 +167,9 @@ export default function NewCopilotPage() {
 
                 {currentQuestion.type === 'select' && (
                   <div className="space-y-3">
-                    {currentQuestion.options?.map((option) => (
+                    {currentQuestion.options?.map((option, index) => (
                       <button
-                        key={option.value}
+                        key={`${currentQuestion.id}-${index}-${String(option.value)}`}
                         onClick={() => handleAnswer(currentQuestion.id, option.value)}
                         className={`w-full text-left p-4 border-2 rounded-lg transition ${
                           wizardData[currentQuestion.id as keyof CreateSessionRequest] === option.value
@@ -186,7 +186,7 @@ export default function NewCopilotPage() {
                 {currentQuestion.type === 'number' && (
                   <input
                     type="number"
-                    value={wizardData[currentQuestion.id as keyof CreateSessionRequest] || ''}
+                    value={typeof wizardData[currentQuestion.id as keyof CreateSessionRequest] === 'number' ? (wizardData[currentQuestion.id as keyof CreateSessionRequest] as number) : ''}
                     onChange={(e) => handleAnswer(currentQuestion.id, parseFloat(e.target.value) || 0)}
                     placeholder={currentQuestion.placeholder}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -221,7 +221,7 @@ export default function NewCopilotPage() {
                 {currentQuestion.type === 'text' && (
                   <input
                     type="text"
-                    value={wizardData[currentQuestion.id as keyof CreateSessionRequest] || ''}
+                    value={typeof wizardData[currentQuestion.id as keyof CreateSessionRequest] === 'string' ? (wizardData[currentQuestion.id as keyof CreateSessionRequest] as string) : ''}
                     onChange={(e) => handleAnswer(currentQuestion.id, e.target.value)}
                     placeholder={currentQuestion.placeholder}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -230,7 +230,7 @@ export default function NewCopilotPage() {
 
                 {currentQuestion.type === 'textarea' && (
                   <textarea
-                    value={wizardData[currentQuestion.id as keyof CreateSessionRequest] || ''}
+                    value={typeof wizardData[currentQuestion.id as keyof CreateSessionRequest] === 'string' ? (wizardData[currentQuestion.id as keyof CreateSessionRequest] as string) : ''}
                     onChange={(e) => handleAnswer(currentQuestion.id, e.target.value)}
                     placeholder={currentQuestion.placeholder}
                     rows={4}

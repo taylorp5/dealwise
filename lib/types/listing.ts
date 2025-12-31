@@ -4,7 +4,7 @@ export type VehicleCondition = 'new' | 'used' | 'cpo' | 'unknown'
 
 export interface ListingData {
   sourceUrl: string
-  sourceSite: 'cars.com' | 'autotrader.com' | 'cargurus.com' | 'other'
+  sourceSite: 'cars.com' | 'autotrader.com' | 'cargurus.com' | 'other' | 'manual'
   title?: string
   year?: number
   make?: string

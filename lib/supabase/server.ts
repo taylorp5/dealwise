@@ -31,6 +31,6 @@ export async function createServerClient() {
         }
       },
     },
-  })
+  } as any)
 }
 

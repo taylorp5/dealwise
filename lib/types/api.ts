@@ -37,7 +37,6 @@ export interface GenerateScriptRequest {
   previousAnalyses?: any[]
   // Packs
   packType?: string
-  packAnswers?: Record<string, any>
 }
 
 export interface ConversationFlow {

@@ -65,10 +65,10 @@ function classifyDecisionModule(input: string): DecisionModule {
 }
 
 // Helper to map DecisionModule to AdvisorModule for backward compatibility
-function mapDecisionModuleToAdvisorModule(decisionModule: DecisionModule): AdvisorModule | null {
+function mapDecisionModuleToAdvisorModule(decisionModule: DecisionModule | null): AdvisorModule | null {
   if (!decisionModule) return null
   
-  const mapping: Record<DecisionModule, AdvisorModule> = {
+  const mapping: Record<string, AdvisorModule> = {
     'FINANCING_DECISION': 'financing',
     'GOOD_DEAL_DECISION': 'good_deal',
     'NEW_VS_USED_DECISION': 'new_vs_used',

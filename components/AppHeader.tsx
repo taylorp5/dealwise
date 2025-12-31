@@ -105,7 +105,7 @@ export default function AppHeader() {
                   className="flex items-center space-x-2 px-3 py-1.5 rounded-lg hover:bg-brand-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium">
-                    {getInitials(user.email)}
+                    {getInitials(user.email || '')}
                   </div>
                   <ChevronDown className={`w-4 h-4 text-brand-muted transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
                 </button>

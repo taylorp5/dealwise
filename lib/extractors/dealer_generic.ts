@@ -15,7 +15,7 @@ import { extractMileageCandidates, pickBestMileage, type MileageCandidate } from
  */
 function parseJsonLd(html: string): Partial<ListingData> {
   const data: Partial<ListingData> = {}
-  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gis)
+  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
   
   if (!jsonLdMatches) return data
   
@@ -121,12 +121,12 @@ function parseEmbeddedJson(html: string): Partial<ListingData> {
   
   // Common patterns for embedded state
   const patterns = [
-    /window\.__NEXT_DATA__\s*=\s*({.+?});/s,
-    /window\.__NUXT__\s*=\s*({.+?});/s,
-    /window\.__INITIAL_STATE__\s*=\s*({.+?});/s,
-    /window\.__PRELOADED_STATE__\s*=\s*({.+?});/s,
-    /preloadedState\s*=\s*({.+?});/s,
-    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>(.+?)<\/script>/s,
+    /window\.__NEXT_DATA__\s*=\s*({[\s\S]+?});/,
+    /window\.__NUXT__\s*=\s*({[\s\S]+?});/,
+    /window\.__INITIAL_STATE__\s*=\s*({[\s\S]+?});/,
+    /window\.__PRELOADED_STATE__\s*=\s*({[\s\S]+?});/,
+    /preloadedState\s*=\s*({[\s\S]+?});/,
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]+?)<\/script>/,
   ]
   
   for (const pattern of patterns) {
@@ -643,7 +643,14 @@ export async function extractDealerGeneric(url: string, html?: string): Promise<
   }
   
   const strategies: string[] = []
-  let priceCandidates: Array<{ price: number; label: string; context: string }> | undefined = undefined
+  let priceCandidates: Array<{ price: number; label: string; context: string }> = []
+  let mileageCandidates: Array<{ value: number; source: string; context: string; score: number }> = []
+  const platform = detectPlatform(html || '')
+  let jsonLdData: Partial<ListingData> = {}
+  let embeddedData: Partial<ListingData> = {}
+  let metaData: Partial<ListingData> = {}
+  let domData: Partial<ListingData> = {}
+  let regexData: Partial<ListingData> = {}
   
   // If HTML not provided, we'll need to fetch it (handled by API route)
   if (!html) {
@@ -667,16 +674,17 @@ export async function extractDealerGeneric(url: string, html?: string): Promise<
   }
   
   // Strategy A: JSON-LD
-  const jsonLdData = parseJsonLd(html)
+  jsonLdData = parseJsonLd(html)
   if (Object.keys(jsonLdData).length > 0) {
     Object.assign(data, jsonLdData)
     strategies.push('json-ld')
   }
   
   // Strategy B: Embedded JSON
-  const embeddedData = parseEmbeddedJson(html)
-  if (Object.keys(embeddedData).length > 0) {
-    for (const [key, value] of Object.entries(embeddedData)) {
+  const embeddedResult = parseEmbeddedJson(html)
+  embeddedData = embeddedResult
+  if (Object.keys(embeddedResult).length > 0) {
+    for (const [key, value] of Object.entries(embeddedResult)) {
       if (value && !data[key as keyof ListingData]) {
         data[key as keyof ListingData] = value as any
       }
@@ -685,70 +693,64 @@ export async function extractDealerGeneric(url: string, html?: string): Promise<
   }
   
   // Strategy C: Meta tags
-  const metaData = parseMetaTags(html)
-  for (const [key, value] of Object.entries(metaData)) {
+  const metaResult = parseMetaTags(html)
+  metaData = metaResult
+  for (const [key, value] of Object.entries(metaResult)) {
     if (value && !data[key as keyof ListingData]) {
       data[key as keyof ListingData] = value as any
     }
   }
-  if (Object.keys(metaData).length > 0) {
+  if (Object.keys(metaResult).length > 0) {
     strategies.push('meta-tags')
     
     // Extract price candidates from meta tags
-    if (metaData.price) {
+    if (metaResult.price) {
       const $ = cheerio.load(html)
       const metaPrice = $('meta[property="product:price:amount"]').attr('content')
       if (metaPrice) {
         const candidates = extractPriceCandidates(metaPrice, 'meta')
-        priceCandidates.push(...candidates)
+        priceCandidates.push(...candidates.map(c => ({ price: c.value, label: c.label, context: c.context })))
       }
     }
   }
   
   // Strategy D: DOM heuristics with candidate scoring
-  const domData = parseDomHeuristics(html)
-  if (domData.priceCandidates) {
-    priceCandidates = domData.priceCandidates
-    delete domData.priceCandidates
+  const domResult = parseDomHeuristics(html)
+  domData = domResult
+  if (domResult.priceCandidates) {
+    priceCandidates = domResult.priceCandidates
+    delete (domResult as any).priceCandidates
   }
-  if (domData.mileageCandidates) {
-    mileageCandidates = domData.mileageCandidates
-    delete domData.mileageCandidates
+  if ((domResult as any).mileageCandidates) {
+    mileageCandidates = (domResult as any).mileageCandidates
+    delete (domResult as any).mileageCandidates
   }
-  for (const [key, value] of Object.entries(domData)) {
+  for (const [key, value] of Object.entries(domResult)) {
     if (value && !data[key as keyof ListingData]) {
       data[key as keyof ListingData] = value as any
     }
   }
-  if (Object.keys(domData).length > 0) {
+  if (Object.keys(domResult).length > 0) {
     strategies.push('dom')
   }
   
   // Strategy E: Regex fallback (only if we don't have price yet)
   if (!data.price) {
-    const regexData = parseRegex(html)
-    for (const [key, value] of Object.entries(regexData)) {
+    const regexResult = parseRegex(html)
+    regexData = regexResult
+    for (const [key, value] of Object.entries(regexResult)) {
       if (value && !data[key as keyof ListingData]) {
         data[key as keyof ListingData] = value as any
       }
     }
-    if (Object.keys(regexData).length > 0) {
+    if (Object.keys(regexResult).length > 0) {
       strategies.push('regex')
     }
   }
   
-  // Check if single listing page
-  const listingCheck = checkSingleListing(html)
-  const allIssues = [...listingCheck.issues]
-  
   // Calculate confidence
   const { confidence, issues: confidenceIssues } = calculateConfidence(data, strategies, priceCandidates)
-  allIssues.push(...confidenceIssues)
-  
-  // If not a single listing, require confirmation
-  if (!listingCheck.isSingleListing) {
-    allIssues.push('Multiple vehicles detected on page - please confirm this is the correct listing')
-  }
+  const allIssues = [...confidenceIssues]
   
   return {
     ...data,

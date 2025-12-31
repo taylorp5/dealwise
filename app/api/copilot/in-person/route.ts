@@ -90,6 +90,19 @@ function generateDeterministicFallback(
     nextMove = 'Update dealer OTD and get new coaching based on the latest offer'
   }
   
+  // Map tactic label to tacticType
+  const tacticTypeMap: Record<string, 'payment_anchoring' | 'urgency' | 'addons' | 'fees' | 'manager' | 'counter_otd' | 'trade_in_lowball' | 'stalling' | 'standard'> = {
+    'Monthly payment push': 'payment_anchoring',
+    'Urgency pressure': 'urgency',
+    'Mandatory add-ons': 'addons',
+    'Fee justification': 'fees',
+    'Manager involvement': 'manager',
+    'Counter OTD': 'counter_otd',
+    'Trade-in lowball': 'trade_in_lowball',
+    'Stalling': 'stalling',
+  }
+  const tacticType = tacticTypeMap[tactics[0]] || 'standard'
+  
   return {
     tacticLabel: tactics[0],
     tacticType,
@@ -171,7 +184,8 @@ export async function POST(request: NextRequest) {
         aiEnabled = !!openai && !!process.env.SUPABASE_SERVICE_ROLE_KEY
       } else {
         // Fallback to client check (dev only)
-        const { data: packData } = await supabase
+        const supabaseClient = await createServerClient()
+        const { data: packData } = await supabaseClient
           .from('user_packs')
           .select('pack_id')
           .eq('user_id', userId)
@@ -249,7 +263,7 @@ export async function POST(request: NextRequest) {
         body.dealerCurrentOTD,
         body.lastDealerOTD,
         body.stateCode,
-        body.situation,
+        body.situation || '',
         body.dealerSaid,
         body.step,
         body.quickAction,
@@ -392,8 +406,6 @@ export async function POST(request: NextRequest) {
         if (body.dealerCurrentOTD && body.dealerCurrentOTD > body.ladder.walk) {
           response.sayThis = `That's above my walk-away number of $${body.ladder.walk.toLocaleString()}. I need $${body.ladder.agree.toLocaleString()} OTD.`
           response.closingLine = `I can't go above $${body.ladder.walk.toLocaleString()}. My target is $${body.ladder.agree.toLocaleString()} OTD.`
-          response.confidenceLevel = 'red'
-          response.confidenceReason = `Dealer is $${(body.dealerCurrentOTD - body.ladder.walk).toLocaleString()} above your walk-away. You should walk.`
         } else {
           response.closingLine = `If you can do $${body.ladder.agree.toLocaleString()} OTD, I'm ready to move forward.`
           response.sayThis = `I need $${body.ladder.agree.toLocaleString()} OTD. Can you show me the breakdown?`
@@ -419,10 +431,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Update confidence based on gap if large (using gap already calculated above)
-    if (gap && gap > 1000) {
-      response.confidenceLevel = 'red'
-      response.confidenceReason = `Dealer is $${gap.toLocaleString()} above target. Large gap - consider walking if they won't negotiate.`
-    }
+    // Note: confidenceLevel and confidenceReason are not part of InPersonAPIResponse type
 
     return NextResponse.json({
       success: true,

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       dealerState?: string
       zip?: string
     } = {}
-    let extractedListing: any = null
+    let extractedListing: ListingData | null = null as ListingData | null
     let blocked = false
     
     // If confirmed data is provided OR this is manual entry, use it directly (user reviewed/edited)
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
             blocked: true,
             confidence: 0,
             issues: [`Fetch failed: HTTP ${fetchResponse.status}`],
-          }
+          } as ListingData
           
           (extractedListing as any).fetchInfo = {
             finalUrl: url,
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
             blocked: true,
             confidence: 0,
             issues: [`Fetch blocked: ${errorMsg} (${blockReason}, status: ${fetchStatus})`],
-          }
+          } as ListingData
           
           // Store fetch diagnostics for later use - preserve real error info
           (extractedListing as any).fetchInfo = {
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
           blocked: true,
           confidence: 0,
           issues: [`Fetch error: ${fetchError?.message || String(fetchError)}`],
-        }
+        } as ListingData
         
         (extractedListing as any).fetchInfo = {
           finalUrl: url,
@@ -507,15 +507,43 @@ export async function POST(request: NextRequest) {
       
       // Ensure tax rate assumptions are populated from taxRateResult
       if (!dealPlan.otdEstimate) {
-        dealPlan.otdEstimate = {
-          assumptions: {},
-          expectedOTD: { low: 0, expected: 0, high: 0 },
-          warningThreshold: 0,
-          checklist: []
-        }
+      dealPlan.otdEstimate = {
+        assumptions: {
+          taxRate: {
+            range: { low: 0, high: 0 }
+          },
+          docFee: {
+            range: { low: 0, high: 0 }
+          },
+          registrationTitle: {
+            range: { low: 0, high: 0 }
+          },
+          dealerAddOns: {
+            value: 0,
+            riskBand: { low: 0, high: 0 }
+          }
+        },
+        expectedOTD: { low: 0, expected: 0, high: 0 },
+        warningThreshold: 0,
+        checklist: []
+      }
       }
       if (!dealPlan.otdEstimate.assumptions) {
-        dealPlan.otdEstimate.assumptions = {}
+        dealPlan.otdEstimate.assumptions = {
+          taxRate: {
+            range: { low: 0, high: 0 }
+          },
+          docFee: {
+            range: { low: 0, high: 0 }
+          },
+          registrationTitle: {
+            range: { low: 0, high: 0 }
+          },
+          dealerAddOns: {
+            value: 0,
+            riskBand: { low: 0, high: 0 }
+          }
+        }
       }
       
       // Populate tax rate information from resolved tax rate
@@ -527,7 +555,6 @@ export async function POST(request: NextRequest) {
           stateBaseRate: taxRateResult.stateBaseRate,
           estimatedLocalAddOn: taxRateResult.estimatedLocalAddOn,
           combinedRate: taxRateResult.combinedRate,
-          combinedRateRange: taxRateResult.combinedRateRange,
           confidence: taxRateResult.confidence,
           source: taxRateResult.source as any,
           disclaimer: taxRateResult.disclaimer,
@@ -614,7 +641,6 @@ export async function POST(request: NextRequest) {
               stateBaseRate: taxRateResult.stateBaseRate,
               estimatedLocalAddOn: taxRateResult.estimatedLocalAddOn,
               combinedRate: taxRateResult.combinedRate,
-              combinedRateRange: taxRateResult.combinedRateRange,
               confidence: taxRateResult.confidence,
               source: taxRateResult.source as any,
               disclaimer: taxRateResult.disclaimer,

@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
       // Build confidence check
       const confidenceCheck = buildConfidenceCheck(
         desiredOTD ? parseFloat(desiredOTD) : undefined,
-        taxRate ? parseFloat(taxRate) : undefined,
+        taxRate,
         goal
       )
       
@@ -541,7 +541,7 @@ Provide:
       // Build confidence check
       const confidenceCheck = buildConfidenceCheck(
         desiredOTD ? parseFloat(desiredOTD) : undefined,
-        taxRate ? parseFloat(taxRate) : undefined,
+        taxRate,
         goal
       )
       
@@ -569,7 +569,7 @@ Provide:
               "This is my first time buying"
             ],
         assumptions: {
-          taxBaseRate: taxRate ? parseFloat(taxRate) : undefined,
+          taxBaseRate: taxRate,
           feeAssumptions: state ? `Based on ${state} state fees` : '',
           disclaimer: 'This draft is designed for email or text. For live dealership negotiations, switch to the In-Person Negotiation Pack.'
         }

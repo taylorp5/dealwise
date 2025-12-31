@@ -142,7 +142,7 @@ function extractNumberFromText(text: string): number | undefined {
  */
 function parseJsonLd(html: string): Partial<ListingData> {
   const data: Partial<ListingData> = {}
-  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gis)
+  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
   
   if (!jsonLdMatches) return data
   
@@ -209,10 +209,10 @@ function parseEmbeddedJson(html: string): Partial<ListingData> {
   
   // Common patterns for embedded state
   const patterns = [
-    /window\.__NEXT_DATA__\s*=\s*({.+?});/s,
-    /window\.__PRELOADED_STATE__\s*=\s*({.+?});/s,
-    /__INITIAL_STATE__\s*=\s*({.+?});/s,
-    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>(.+?)<\/script>/s,
+    /window\.__NEXT_DATA__\s*=\s*({[\s\S]+?});/,
+    /window\.__PRELOADED_STATE__\s*=\s*({[\s\S]+?});/,
+    /__INITIAL_STATE__\s*=\s*({[\s\S]+?});/,
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]+?)<\/script>/,
   ]
   
   for (const pattern of patterns) {

@@ -57,7 +57,7 @@ export default function PacksPage() {
       const data: PacksResponse = await res.json()
       if (!data.success) {
         // Silently handle errors - don't show raw error messages
-        console.error('Failed to load packs:', data.error)
+        console.error('Failed to load packs:', (data as any).error)
         return
       }
       setUserPacks(data.userPacks || [])
@@ -83,6 +83,8 @@ export default function PacksPage() {
   const isUnlocked = (packId: string) =>
     userPacks.some((p) => p.packId === packId && p.isUnlocked)
 
+  const [error, setError] = useState<string | null>(null)
+  
   const handleSelect = async (packId: string) => {
     try {
       setError(null)
@@ -139,7 +141,7 @@ export default function PacksPage() {
         console.error('Failed to unlock pack:', data.error)
         
         // Check if it's an authentication error
-        if (res.status === 401 || data.error === 'Unauthorized' || data.error === 'Invalid token') {
+        if (res.status === 401 || (data as any).error === 'Unauthorized' || (data as any).error === 'Invalid token') {
           alert('You need to sign in or sign up to unlock packs and access enhanced features.\n\nPlease sign in and try again.')
           router.push('/login')
           return

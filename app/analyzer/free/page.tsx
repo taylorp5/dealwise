@@ -1,8 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import ResearchPageContent from '@/components/ResearchPageContent'
 
-export default function FreeAnalyzerPage() {
+function FreeAnalyzerContent() {
   return (
     <>
       {/* Debug label - dev only */}
@@ -13,6 +14,14 @@ export default function FreeAnalyzerPage() {
       )}
       <ResearchPageContent mode="free" />
     </>
+  )
+}
+
+export default function FreeAnalyzerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-center"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div><p className="text-gray-600">Loading...</p></div></div>}>
+      <FreeAnalyzerContent />
+    </Suspense>
   )
 }
 

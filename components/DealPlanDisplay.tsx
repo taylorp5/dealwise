@@ -101,10 +101,10 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
 
       // Build context from deal plan
       const context = {
-        state: dealPlan.otdEstimate?.assumptions?.state || '',
+        state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
         vehiclePrice: dealPlan.targets.askingPrice,
         estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
-        vehicleType: dealPlan.vehicleInfo?.condition || 'used',
+        vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
         hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
       }
 
@@ -270,10 +270,10 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
                   }
 
                   const context = {
-                    state: dealPlan.otdEstimate?.assumptions?.state || '',
+                    state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
                     vehiclePrice: dealPlan.targets.askingPrice,
                     estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
-                    vehicleType: dealPlan.vehicleInfo?.condition || 'used',
+                    vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
                     hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
                   }
 
@@ -288,7 +288,7 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
                       context,
                       moduleType: module,
                       savedMemory: savedMemory ? {
-                        [module === 'financing' ? 'financingAnswers' : `${module}Answers`]: savedMemory[module === 'financing' ? 'financingAnswers' : `${module}Answers`],
+                        [module === 'financing' ? 'financingAnswers' : `${module}Answers`]: (savedMemory as any)[module === 'financing' ? 'financingAnswers' : `${module}Answers`],
                       } : undefined,
                     }),
                   })
@@ -355,10 +355,10 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
                     }
 
                     const context = {
-                      state: dealPlan.otdEstimate?.assumptions?.state || '',
+                      state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
                       vehiclePrice: dealPlan.targets.askingPrice,
                       estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
-                      vehicleType: dealPlan.vehicleInfo?.condition || 'used',
+                      vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
                       hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
                     }
 
@@ -373,7 +373,7 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
                         context,
                         moduleType: module,
                         savedMemory: savedMemory ? {
-                          [module === 'financing' ? 'financingAnswers' : `${module}Answers`]: savedMemory[module === 'financing' ? 'financingAnswers' : `${module}Answers`],
+                          [module === 'financing' ? 'financingAnswers' : `${module}Answers`]: (savedMemory as any)[module === 'financing' ? 'financingAnswers' : `${module}Answers`],
                         } : undefined,
                       }),
                     })
@@ -688,10 +688,10 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
                       }
 
                       const context = {
-                        state: dealPlan.otdEstimate?.assumptions?.state || '',
+                        state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
                         vehiclePrice: dealPlan.targets.askingPrice,
                         estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
-                        vehicleType: dealPlan.vehicleInfo?.condition || 'used',
+                        vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
                         hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
                       }
 
@@ -918,10 +918,10 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
                       }
 
                       const context = {
-                        state: dealPlan.otdEstimate?.assumptions?.state || '',
+                        state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
                         vehiclePrice: dealPlan.targets.askingPrice,
                         estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
-                        vehicleType: dealPlan.vehicleInfo?.condition || 'used',
+                        vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
                         hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
                       }
 
@@ -1558,6 +1558,11 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   const handleOpenCopilot = (dealerMessage?: string) => {
     const ctx = dealPlan.nextMoves.copilotLink
     
+    // Determine pack ID from variant prop
+    const selectedPackId = variant === 'first_time' ? 'first_time' : variant === 'in_person' ? 'in_person' : null
+    const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
+    const hasInPersonPack = hasPack('in_person') || hasAllAccess()
+    
     // Use pack context (selected pack) instead of auto-prioritizing by ownership
     // This ensures the route matches the pack context the user is viewing
     const copilotRoute = getCopilotRouteFromContext(
@@ -1582,7 +1587,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
     localStorage.setItem(`copilot_car_context${keySuffix}`, ctx.carContext)
     
     // Add state to localStorage for copilot (mode-specific)
-    const state = dealPlan.otdEstimate?.assumptions?.state || dealPlan.nextMoves.otdBuilderLink?.state
+    const state = dealPlan.otdEstimate?.assumptions?.registrationState || dealPlan.nextMoves.otdBuilderLink?.state
     if (state) {
       localStorage.setItem(`copilot_state${keySuffix}`, state)
       console.log('Copilot: Setting state:', state)
@@ -1608,13 +1613,13 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
     }
     
     // Set state - try multiple sources in order of preference
-    const state = dealPlan.otdEstimate?.assumptions?.state || link?.state
+    const state = dealPlan.otdEstimate?.assumptions?.registrationState || link?.state
     if (state) {
       localStorage.setItem('otd_builder_state', state)
       console.log('OTD Builder: Setting state:', state)
     } else {
-      console.warn('OTD Builder: No state found in dealPlan.otdEstimate.assumptions.state or link.state', {
-        assumptionsState: dealPlan.otdEstimate?.assumptions?.state,
+      console.warn('OTD Builder: No state found in dealPlan.otdEstimate.assumptions.registrationState or link.state', {
+        assumptionsState: dealPlan.otdEstimate?.assumptions?.registrationState,
         linkState: link?.state,
         assumptions: dealPlan.otdEstimate?.assumptions,
       })
@@ -1706,10 +1711,10 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                       <span><strong>Comparable vehicles:</strong> Use market data to anchor your offer</span>
                     </li>
                   )}
-                  {dealPlan.leverage.marketCondition && (
+                  {(dealPlan.leverage as any).marketCondition && (
                     <li className="flex items-start gap-2 text-sm text-gray-700">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span><strong>Market conditions:</strong> {dealPlan.leverage.marketCondition}</span>
+                      <span><strong>Market conditions:</strong> {(dealPlan.leverage as any).marketCondition}</span>
                     </li>
                   )}
                   <li className="flex items-start gap-2 text-sm text-gray-700">
@@ -1858,11 +1863,11 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                         <span className="text-sm font-semibold text-gray-900">Combined Rate:</span>
                         <span className="text-sm font-bold text-blue-600">{otdAssumptions.taxRate.combinedRate.toFixed(2)}%</span>
                       </div>
-                    ) : otdAssumptions.taxRate.combinedRateRange && (
+                    ) : (otdAssumptions.taxRate as any).combinedRateRange && (
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                         <span className="text-sm font-semibold text-gray-900">Combined Rate Range:</span>
                         <span className="text-sm font-bold text-blue-600">
-                          {otdAssumptions.taxRate.combinedRateRange.low.toFixed(2)}% - {otdAssumptions.taxRate.combinedRateRange.high.toFixed(2)}%
+                          {(otdAssumptions.taxRate as any).combinedRateRange.low.toFixed(2)}% - {(otdAssumptions.taxRate as any).combinedRateRange.high.toFixed(2)}%
                         </span>
                       </div>
                     )}
@@ -2032,7 +2037,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               <h4 className="text-md font-semibold text-gray-800 mb-3">Hidden Costs to Expect</h4>
               <div className="space-y-2">
                 {(() => {
-                  const state = dealPlan.otdEstimate?.assumptions?.state || ''
+                  const state = dealPlan.otdEstimate?.assumptions?.registrationState || ''
                   const hiddenCosts = []
                   
                   // City sticker (common in IL, NY, etc.)
@@ -2202,7 +2207,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                 const mistakes = []
                 const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
                 const priceDiff = dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice
-                const state = dealPlan.otdEstimate?.assumptions?.state || ''
+                const state = dealPlan.otdEstimate?.assumptions?.registrationState || ''
                 
                 // Mistake 1: Not getting written OTD
                 if (!hasOTD) {
@@ -2508,7 +2513,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             </p>
             <div className="space-y-2">
               {(() => {
-                const state = dealPlan.otdEstimate?.assumptions?.state || ''
+                const state = dealPlan.otdEstimate?.assumptions?.registrationState || ''
                 const surpriseCosts = []
                 
                 // City sticker (common in IL, NY, etc.)
@@ -2657,14 +2662,14 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               <AdvisorChat
                 listingUrl={listingUrl}
                 context={{
-                  state: dealPlan.otdEstimate?.assumptions?.state || '',
+                  state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
                   vehiclePrice: dealPlan.targets.askingPrice,
                   estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
-                  vehicleType: dealPlan.vehicleInfo?.condition || 'used',
+                  vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
                   hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
-                  dealerName: dealPlan.vehicleInfo?.dealerName,
-                  dealerState: dealPlan.otdEstimate?.assumptions?.state,
-                  trim: dealPlan.vehicleInfo?.trim,
+                  dealerName: (dealPlan as any).vehicleInfo?.dealerName,
+                  dealerState: dealPlan.otdEstimate?.assumptions?.registrationState,
+                  trim: (dealPlan as any).vehicleInfo?.trim,
                 }}
               />
             </div>
@@ -2723,14 +2728,14 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                   if (highLeverage) {
                     verbalLeverage.push({
                       situation: 'When they push back on price',
-                      phrase: `"${highLeverage.point}"`,
+                      phrase: `"${highLeverage.factor}"`,
                       why: 'Uses your strongest leverage point'
                     })
                   }
                 }
                 
                 // Market condition leverage
-                if (dealPlan.leverage.marketCondition) {
+                if ((dealPlan.leverage as any).marketCondition) {
                   verbalLeverage.push({
                     situation: 'When they claim urgency',
                     phrase: `"I'm comparing a few options. What's your best OTD price?"`,
@@ -3029,7 +3034,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                     <div>
                       <p><strong>Issues:</strong></p>
                       <ul className="list-disc list-inside ml-2 text-red-600">
-                        {diagnostics.issues.map((issue, i) => (
+                        {diagnostics.issues.map((issue: string, i: number) => (
                           <li key={i}>{issue}</li>
                         ))}
                       </ul>
@@ -3055,7 +3060,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {diagnostics.priceCandidates.map((candidate, i) => (
+                        {diagnostics.priceCandidates.map((candidate: any, i: number) => (
                           <tr key={i} className={i === 0 ? 'bg-blue-50' : ''}>
                             <td className="px-3 py-2 text-sm font-mono">
                               ${candidate.value.toLocaleString()}
@@ -3098,7 +3103,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {diagnostics.mileageCandidates.map((candidate, i) => (
+                        {diagnostics.mileageCandidates.map((candidate: any, i: number) => (
                           <tr key={i} className={i === 0 ? 'bg-blue-50' : ''}>
                             <td className="px-3 py-2 text-sm font-mono">
                               {candidate.value.toLocaleString()} mi

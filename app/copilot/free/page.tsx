@@ -209,8 +209,8 @@ export default function FreeCopilotPage() {
       
       setResult({
         ...data.data,
-        effectiveMode: data.effectiveMode,
-        entitlementCheck: data.entitlementCheck,
+        effectiveMode: (data as any).effectiveMode,
+        entitlementCheck: (data as any).entitlementCheck,
       })
     } catch (err: any) {
       setError(err.message || 'Failed to generate response')
@@ -549,7 +549,7 @@ export default function FreeCopilotPage() {
               <div className="space-y-6">
                 {/* Debug Mode Info */}
                 <div className="text-xs text-gray-500 text-center pb-2 border-b border-gray-200">
-                  Mode: {result.effectiveMode || 'free'} {result.entitlementCheck && `(${result.entitlementCheck})`}
+                  Mode: {(result as any).effectiveMode || 'free'} {(result as any).entitlementCheck && `(${(result as any).entitlementCheck})`}
                 </div>
                 {/* Best Next Message */}
                 <div>

@@ -249,7 +249,7 @@ export default function ResearchPageContent(props?: ResearchPageContentProps) {
       setAnalysisResult(data.data)
       
       // Auto-add to offers with Deal Plan data
-      if (data.data.targets?.askingPrice) {
+      if (data.data && data.data.targets?.askingPrice) {
         const dealerMatch = listingUrl.match(/https?:\/\/(?:www\.)?([^/]+)/)
         const dealer = dealerMatch ? dealerMatch[1].replace(/\.(com|net|org)/, '') : 'Dealer'
         
@@ -257,10 +257,10 @@ export default function ResearchPageContent(props?: ResearchPageContentProps) {
           ...prev,
           {
             dealer,
-            price: data.data.targets.askingPrice,
-            otdLow: data.data.otdEstimate.expectedOTD.low,
-            otdHigh: data.data.otdEstimate.expectedOTD.high,
-            notes: `Target: $${data.data.targets.acceptableDealPrice.toLocaleString()}`,
+            price: data.data!.targets.askingPrice,
+            otdLow: data.data!.otdEstimate.expectedOTD.low,
+            otdHigh: data.data!.otdEstimate.expectedOTD.high,
+            notes: `Target: $${data.data!.targets.acceptableDealPrice.toLocaleString()}`,
             listingUrl,
             fromAnalysis: true,
           },
@@ -623,8 +623,6 @@ export default function ResearchPageContent(props?: ResearchPageContentProps) {
                         sourceUrl: 'manual-paste',
                         sourceSite: 'manual',
                         blocked: false,
-                        confidence: parsed.confidence,
-                        issues: parsed.issues,
                         ...parsed,
                       }
                       

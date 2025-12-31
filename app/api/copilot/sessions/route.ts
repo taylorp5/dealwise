@@ -67,7 +67,12 @@ export async function POST(request: NextRequest) {
     const openai = getOpenAIClient()
 
     try {
-      const strategyPrompt = generateInitialStrategy(body, packConfig)
+      // Convert PackConfig from packs.ts to copilot.ts format
+      const copilotPackConfig = {
+        ...packConfig,
+        tips: packConfig.features || [], // Map features to tips for compatibility
+      } as any
+      const strategyPrompt = generateInitialStrategy(body, copilotPackConfig)
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [

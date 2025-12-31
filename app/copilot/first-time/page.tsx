@@ -834,9 +834,9 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
                       <p className="text-sm text-gray-700">Live dealership conversations</p>
                     </div>
                   </div>
-                  {result.explainer && (
+                  {(result as any).explainer && (
                     <p className="text-sm text-gray-600 border-t border-slate-200 pt-4 mt-4">
-                      {result.explainer}
+                      {(result as any).explainer}
                     </p>
                   )}
                 </Card>

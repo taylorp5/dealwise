@@ -552,9 +552,9 @@ export default function CalculatorPage() {
                   value={taxRate}
                   onChange={(e) => {
                     setTaxRate(e.target.value)
-                    setTaxRateOverride(true)
+                    setTaxRateOverride(taxRateResult?.combinedRateRange ? true : false)
                   }}
-                  placeholder={taxRateResult?.combinedRate?.toFixed(2) || taxRateResult?.combinedRateRange ? `${taxRateResult.combinedRateRange.low.toFixed(2)}-${taxRateResult.combinedRateRange.high.toFixed(2)}` : getTaxRateForState(state)?.toFixed(2) || '6.25'}
+                  placeholder={taxRateResult?.combinedRate?.toFixed(2) || (taxRateResult?.combinedRateRange ? `${taxRateResult.combinedRateRange.low.toFixed(2)}-${taxRateResult.combinedRateRange.high.toFixed(2)}` : getTaxRateForState(state)?.toFixed(2) || '6.25')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                   disabled={taxRateLoading}
