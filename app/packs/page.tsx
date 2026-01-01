@@ -42,7 +42,7 @@ interface PacksResponse {
 // Pack prices (in USD)
 const PACK_PRICES: Record<string, number> = {
   first_time: 15,
-  in_person: 10,
+  in_person: 12,
   bundle: 22,
 }
 
@@ -271,7 +271,7 @@ export default function PacksPage() {
       bundle: [
         'Everything in First-Time Buyer Pack',
         'Everything in In-Person Negotiation Pack',
-        'Best value: Save $3 compared to buying separately',
+        'Best value: Save $5 compared to buying separately',
         'Complete coverage from first contact to closing',
       ],
     }
