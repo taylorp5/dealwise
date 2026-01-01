@@ -554,7 +554,14 @@ export default function PacksPage() {
                 
                 <Button 
                   className="w-full" 
-                  onClick={() => handleUnlock(STRIPE_PRICES.BUNDLE.priceId)}
+                  onClick={() => {
+                    if (!STRIPE_PRICES.BUNDLE.priceId) {
+                      console.error('Bundle price ID not configured')
+                      alert('Bundle pricing is not configured. Please contact support.')
+                      return
+                    }
+                    handleUnlock(STRIPE_PRICES.BUNDLE.priceId)
+                  }}
                   disabled={!STRIPE_PRICES.BUNDLE.priceId}
                 >
                   Unlock Bundle

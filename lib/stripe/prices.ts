@@ -12,19 +12,20 @@ export interface StripePriceConfig {
 
 export const STRIPE_PRICES: Record<string, StripePriceConfig> = {
   FIRST_TIME: {
-    priceId: process.env.STRIPE_PRICE_FIRST_TIME || '',
+    // Use NEXT_PUBLIC_ prefix so Price IDs are available on client-side
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FIRST_TIME || process.env.STRIPE_PRICE_FIRST_TIME || '',
     amount: 12,
     label: 'First-Time Buyer Pack',
     packIds: ['first_time'],
   },
   IN_PERSON: {
-    priceId: process.env.STRIPE_PRICE_IN_PERSON || '',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_IN_PERSON || process.env.STRIPE_PRICE_IN_PERSON || '',
     amount: 15,
     label: 'In-Person Negotiation Pack',
     packIds: ['in_person'],
   },
   BUNDLE: {
-    priceId: process.env.STRIPE_PRICE_BUNDLE || '',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUNDLE || process.env.STRIPE_PRICE_BUNDLE || '',
     amount: 22,
     label: 'Bundle (Both Packs)',
     packIds: ['first_time', 'in_person'],
