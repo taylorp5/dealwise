@@ -3,26 +3,25 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import ResearchPageContent from '@/components/ResearchPageContent'
 
 export default function FirstTimeAnalyzerPage() {
   const { user, loading: authLoading } = useAuth()
+  const { hasFirstTime, loading: entitlementsLoading } = useEntitlements()
   const router = useRouter()
   
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || entitlementsLoading) return
     
-    const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
-    
-    if (!hasFirstTimePack) {
+    if (!hasFirstTime) {
       // Redirect to free analyzer if no entitlement
       router.push('/analyzer/free')
       return
     }
-  }, [authLoading, router])
+  }, [authLoading, entitlementsLoading, hasFirstTime, router])
   
-  if (authLoading) {
+  if (authLoading || entitlementsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

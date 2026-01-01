@@ -451,17 +451,31 @@ export default function PacksPage() {
                         <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
                       </Link>
                     )}
-                    <Link 
-                      href={getCopilotRouteForPack(pack.id)} 
-                      className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                    >
-                      <span className="text-sm font-medium text-brand-ink">
-                        {pack.id === 'first_time' ? 'First-Time Buyer Negotiation Draft Builder' : 
-                         pack.id === 'in_person' ? 'In-Person Negotiation Draft Builder' : 
-                         'Negotiation Draft Builder'}
-                      </span>
-                      <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                    {pack.id === 'in_person' ? (
+                      <>
+                        <Link 
+                          href="/copilot/in-person"
+                          className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                        >
+                          <span className="text-sm font-medium text-brand-ink">In-Person Negotiation Tools</span>
+                          <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                        <p className="text-xs text-brand-muted/70 px-3 mb-2">
+                          Includes: Prepare Me, Draft Builder, Live Coach
+                        </p>
+                      </>
+                    ) : (
+                      <Link 
+                        href={getCopilotRouteForPack(pack.id)} 
+                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                      >
+                        <span className="text-sm font-medium text-brand-ink">
+                          {pack.id === 'first_time' ? 'First-Time Buyer Negotiation Draft Builder' : 
+                           'Negotiation Draft Builder'}
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}
