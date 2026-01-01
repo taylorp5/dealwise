@@ -49,26 +49,40 @@ const PACK_PRICES: Record<string, number> = {
 export default function PacksPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const { loading: entitlementsLoading, hasFirstTime, hasInPerson, hasBundle } = useEntitlements()
+  const { loading: entitlementsLoading, hasFirstTime, hasInPerson, hasBundle, refreshEntitlements } = useEntitlements()
   const [loading, setLoading] = useState(true)
   const [userPacks, setUserPacks] = useState<PackStatus[]>([])
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null)
+  const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPacks()
     
     // Handle checkout success/cancel from URL params
     const params = new URLSearchParams(window.location.search)
-    const checkoutStatus = params.get('checkout')
-    if (checkoutStatus === 'success') {
-      // Refresh packs to show newly unlocked pack
-      // Reload page to refresh entitlements
-      window.location.reload()
-    } else if (checkoutStatus === 'cancel') {
-      // Clean up URL
-      window.history.replaceState({}, '', '/packs')
+    const status = params.get('checkout')
+    const sid = params.get('session_id')
+    
+    if (status === 'success') {
+      setCheckoutStatus('success')
+      if (sid) setSessionId(sid)
+      // Refresh entitlements to show newly unlocked pack
+      refreshEntitlements()
+      // Clean up URL after a short delay
+      setTimeout(() => {
+        window.history.replaceState({}, '', '/packs')
+        setCheckoutStatus(null)
+      }, 5000) // Show banner for 5 seconds
+    } else if (status === 'cancel') {
+      setCheckoutStatus('cancel')
+      // Clean up URL after a short delay
+      setTimeout(() => {
+        window.history.replaceState({}, '', '/packs')
+        setCheckoutStatus(null)
+      }, 3000) // Show banner for 3 seconds
     }
-  }, [])
+  }, [refreshEntitlements])
 
   const fetchPacks = async (showLoading = true) => {
     if (showLoading) setLoading(true)
@@ -515,6 +529,38 @@ export default function PacksPage() {
             One-time unlock • Lifetime access • No subscription
           </p>
         </div>
+
+        {/* Checkout Status Banners */}
+        {checkoutStatus === 'success' && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start space-x-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-green-900 mb-1">
+                  Payment complete — unlocking your pack…
+                </p>
+                <p className="text-xs text-green-700">
+                  Your pack is being activated. This may take a few seconds.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {checkoutStatus === 'cancel' && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start space-x-3">
+              <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  Checkout canceled
+                </p>
+                <p className="text-xs text-amber-700">
+                  No charges were made. You can try again anytime.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-16">

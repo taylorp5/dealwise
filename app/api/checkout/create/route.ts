@@ -5,10 +5,6 @@ import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
   try {
-    // Debug: Log request origin
-    const origin = request.headers.get('origin') || request.headers.get('referer') || 'unknown'
-    console.log('[Checkout] Request received from origin:', origin)
-
     // Check for Supabase cookies in cookieStore
     const cookieStore = cookies()
     const allCookies = cookieStore.getAll()
@@ -117,8 +113,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get base URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    // Get origin dynamically from request
+    // Try multiple methods to get the origin
+    const originHeader = request.headers.get('origin')
+    const refererHeader = request.headers.get('referer')
+    const hostHeader = request.headers.get('host')
+    
+    let origin: string
+    if (originHeader) {
+      origin = originHeader
+    } else if (refererHeader) {
+      try {
+        const refererUrl = new URL(refererHeader)
+        origin = refererUrl.origin
+      } catch {
+        origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      }
+    } else if (hostHeader) {
+      // Construct origin from host header (works in production)
+      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      origin = `${protocol}://${hostHeader}`
+    } else {
+      // Fallback to env var or localhost
+      origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    }
+
+    console.log('[Checkout] Request received from origin:', origin)
+    console.log('[Checkout] Using origin for redirect:', origin)
 
     // Create Stripe Checkout Session
     // Ensure line_items uses Price ID (price_...) not Product ID (prod_...)
@@ -134,8 +155,8 @@ export async function POST(request: NextRequest) {
           },
         ],
         client_reference_id: userId, // User ID for webhook lookup
-        success_url: `${baseUrl}/packs?checkout=success`,
-        cancel_url: `${baseUrl}/packs?checkout=cancel`,
+        success_url: `${origin}/packs?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/packs?checkout=cancel`,
         metadata: {
           user_id: userId,
           pack_key: product_key, // Store as pack_key for clarity
