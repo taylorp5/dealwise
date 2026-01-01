@@ -158,6 +158,19 @@ export async function POST(request: NextRequest) {
 
       if (upsertError) {
         console.error('[Webhook] Error upserting entitlements:', upsertError)
+        
+        // Provide helpful error message if table doesn't exist
+        if (upsertError.message?.includes('does not exist') || upsertError.message?.includes('schema cache')) {
+          console.error('[Webhook] Table user_entitlements does not exist. Please run the migration: supabase/migrations/001_user_entitlements.sql')
+          return NextResponse.json(
+            { 
+              error: 'Database table not found. Please create user_entitlements table. See docs/QUICK_SETUP_USER_ENTITLEMENTS.md',
+              details: upsertError.message 
+            },
+            { status: 500 }
+          )
+        }
+        
         throw upsertError
       }
 
