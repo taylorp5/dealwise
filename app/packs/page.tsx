@@ -13,6 +13,7 @@ import Button from '@/components/ui/Button'
 import { packs as packConfigs } from '@/lib/packs/config'
 import type { PackConfig } from '@/lib/types/packs'
 import { getCopilotRouteForPack } from '@/lib/utils/copilot-routes'
+import { getAnalyzerRouteForPack } from '@/lib/packs/entitlement-helpers'
 import { 
   GraduationCap, 
   DollarSign, 
@@ -434,9 +435,7 @@ export default function PacksPage() {
                   </div>
                   <div className="space-y-2">
                     <Link 
-                      href={pack.id === 'first_time' ? '/analyzer/first-time' : 
-                            pack.id === 'in_person' ? '/analyzer/in-person' : 
-                            '/analyzer/free'}
+                      href={getAnalyzerRouteForPack(pack.id)}
                       className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
                     >
                       <span className="text-sm font-medium text-brand-ink">Listing Analyzer</span>
