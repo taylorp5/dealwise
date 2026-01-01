@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePackEntitlements } from '@/hooks/usePackEntitlements'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
@@ -38,15 +37,14 @@ interface FirstTimeCopilotResponse {
 export default function FirstTimeCopilotPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
-  const { ownedPacks } = usePackEntitlements()
-  const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
+  const { loading: entitlementsLoading, hasFirstTime } = useEntitlements()
   
-  // Entitlement guard
+  // Entitlement guard - wait for entitlements to load before checking
   useEffect(() => {
-    if (!authLoading && !hasFirstTimePack) {
+    if (!authLoading && !entitlementsLoading && !hasFirstTime) {
       router.push('/copilot/free')
     }
-  }, [authLoading, hasFirstTimePack, router])
+  }, [authLoading, entitlementsLoading, hasFirstTime, router])
   
   // Inputs (same as free, but with first-time specific features)
   const [buyerType, setBuyerType] = useState<BuyerType>('first-time')
@@ -144,7 +142,7 @@ export default function FirstTimeCopilotPage() {
 
   // First-Time Buyer Pack: Pre-generation advisor check
   const runPreGenCheck = async (): Promise<any> => {
-    if (!hasFirstTimePack) return null
+    if (!hasFirstTime) return null
     
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -192,7 +190,7 @@ Validate the desired OTD, comment on stage expectations, flag tax rate assumptio
 
   // First-Time Buyer Pack: Dealer message decoder
   const decodeDealerMessage = async (dealerMessage: string): Promise<any> => {
-    if (!hasFirstTimePack || !dealerMessage.trim()) return null
+    if (!hasFirstTime || !dealerMessage.trim()) return null
     
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -229,7 +227,7 @@ Validate the desired OTD, comment on stage expectations, flag tax rate assumptio
 
   // First-Time Buyer Pack: Post-generation explanation
   const getPostGenExplanation = async (generatedMessage: string): Promise<any> => {
-    if (!hasFirstTimePack) return null
+    if (!hasFirstTime) return null
     
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -319,7 +317,7 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
     }
     
     // First-Time Buyer Pack: Pre-generation check
-    if (hasFirstTimePack) {
+    if (hasFirstTime) {
       setPreGenCheckLoading(true)
       setShowPreGenCheck(false)
       setPreGenCheck(null)
@@ -351,7 +349,7 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
       }
       
       // First-Time Buyer Pack: Decode dealer message if present
-      if (hasFirstTimePack && contextText.trim()) {
+      if (hasFirstTime && contextText.trim()) {
         const decoder = await decodeDealerMessage(contextText.trim())
         if (decoder) setDealerMessageDecoder(decoder)
       }
@@ -400,7 +398,7 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
       })
       
       // First-Time Buyer Pack: Get post-generation explanation
-      if (hasFirstTimePack && data.data.bestNextMessage) {
+      if (hasFirstTime && data.data.bestNextMessage) {
         const explanation = await getPostGenExplanation(data.data.bestNextMessage)
         if (explanation) setPostGenExplanation(explanation)
       }
@@ -415,7 +413,7 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
     navigator.clipboard.writeText(text)
   }
   
-  if (authLoading) {
+  if (authLoading || entitlementsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -425,7 +423,7 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
       </div>
     )
   }
-  
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -436,8 +434,8 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
       </div>
     )
   }
-  
-  if (!hasFirstTimePack) {
+
+  if (!hasFirstTime) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
