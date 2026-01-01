@@ -108,29 +108,57 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate that priceId is a Stripe Price ID (starts with "price_")
+    if (!priceId.startsWith('price_')) {
+      console.error(`[Checkout] Invalid Stripe price ID format for product_key: ${product_key}. Got: ${priceId}`)
+      return NextResponse.json(
+        { success: false, error: `Invalid Stripe price ID. Expected price_... but got: ${priceId.substring(0, 20)}...` },
+        { status: 400 }
+      )
+    }
+
     // Get base URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
     // Create Stripe Checkout Session
-    const checkoutSession = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
+    // Ensure line_items uses Price ID (price_...) not Product ID (prod_...)
+    let checkoutSession
+    try {
+      checkoutSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId, // Must be a Price ID (price_...), not Product ID (prod_...)
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/packs?checkout=success`,
+        cancel_url: `${baseUrl}/packs?checkout=cancel`,
+        metadata: {
+          user_id: userId,
+          product_key: product_key,
         },
-      ],
-      success_url: `${baseUrl}/packs?checkout=success`,
-      cancel_url: `${baseUrl}/packs?checkout=cancel`,
-      metadata: {
-        user_id: userId,
-        product_key: product_key,
-      },
-    })
+      })
+    } catch (stripeError: any) {
+      // Handle Stripe API errors with clean JSON response
+      console.error('[Checkout] Stripe API error:', stripeError.message)
+      const errorMessage = stripeError.message || 'Failed to create checkout session'
+      return NextResponse.json(
+        { success: false, error: errorMessage },
+        { 
+          status: 400,
+          headers: {
+            'x-debug-auth-user': 'yes',
+            'x-debug-cookie-present': hasSupabaseCookie ? 'yes' : 'no',
+          },
+        }
+      )
+    }
 
-    console.log(`[Checkout] Created session ${checkoutSession.id} for user ${userId}, product ${product_key}`)
+    console.log(`[Checkout] Created session ${checkoutSession.id} for user ${userId}, product ${product_key}, price ${priceId}`)
 
+    // Return checkout URL for frontend redirect
     const response = NextResponse.json({
       success: true,
       url: checkoutSession.url,
