@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { buildInPersonAdvisorSystemPrompt, buildInPersonAdvisorUserPrompt } from '@/lib/prompts/in_person_advisor'
@@ -32,7 +32,7 @@ interface AdvisorResponse {
 export async function POST(request: NextRequest) {
   try {
     // Authentication check
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 import { useRouter, useSearchParams } from 'next/navigation'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'

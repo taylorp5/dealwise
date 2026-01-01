@@ -1,8 +1,10 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
 import type { User } from '@supabase/supabase-js'
+
+const supabase = createBrowserSupabaseClient()
 
 // Check if Supabase is properly configured
 const isSupabaseConfigured = () => {

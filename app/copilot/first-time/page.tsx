@@ -7,7 +7,9 @@ import { usePackEntitlements } from '@/hooks/usePackEntitlements'
 import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 import { getTaxRateForState } from '@/lib/utils/tax-rates'
 import type { TaxRateResult } from '@/lib/utils/tax-lookup'
 

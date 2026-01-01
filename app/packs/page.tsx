@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 import { useAuth } from '@/contexts/AuthContext'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'

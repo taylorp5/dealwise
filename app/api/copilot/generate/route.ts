@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai/client'
 import { getTaxRateForState } from '@/lib/utils/tax-rates'
 import { resolveTaxRate } from '@/lib/utils/tax-lookup'
@@ -10,7 +10,7 @@ import { getPlaybookForGoal, assembleMessage, getLeverageExplanation, buildConfi
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
 
     // Support Authorization header (Bearer token) and cookie session
     const authHeader = request.headers.get('authorization')

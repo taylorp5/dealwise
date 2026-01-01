@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { buildInPersonRealtimeSystemPrompt, buildInPersonRealtimeUserPrompt } from '@/lib/prompts/copilot_in_person_realtime'
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7)
-      const supabase = await createServerClient()
+      const supabase = await createServerSupabaseClient()
       const {
         data: { user },
         error,
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
     
     // Fallback to cookie-based session
     if (!userId) {
-      const supabase = await createServerClient()
+      const supabase = await createServerSupabaseClient()
       const {
         data: { session: cookieSession },
       } = await supabase.auth.getSession()
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
         aiEnabled = !!openai && !!process.env.SUPABASE_SERVICE_ROLE_KEY
       } else {
         // Fallback to client check (dev only)
-        const supabaseClient = await createServerClient()
+        const supabaseClient = await createServerSupabaseClient()
         const { data: packData } = await supabaseClient
           .from('user_packs')
           .select('pack_id')

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { AnalyzeListingRequest, AnalyzeListingResponse, DealPlan } from '@/lib/types/api'
 import type { ListingData } from '@/lib/types/listing'
 import { buildListingAnalyzerSystemPrompt, buildListingAnalyzerUserPrompt } from '@/lib/prompts/listing-analyzer'
@@ -14,7 +14,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
 
     // Support Authorization header (Bearer token) and cookie session
     const authHeader = request.headers.get('authorization')

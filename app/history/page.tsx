@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 
 export default function HistoryPage() {
   const { user, loading: authLoading } = useAuth()

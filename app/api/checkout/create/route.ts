@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
@@ -9,33 +8,13 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get('origin') || request.headers.get('referer') || 'unknown'
     console.log('[Checkout] Request received from origin:', origin)
 
+    // Check for Supabase cookies
+    const cookieHeader = request.headers.get('cookie') || ''
+    const hasSupabaseCookie = cookieHeader.includes('sb-')
+    console.log('[Checkout] Supabase cookie present:', hasSupabaseCookie)
+
     // Create Supabase server client with cookie support
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch (error) {
-              // Ignore errors in API routes
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set({ name, value: '', ...options })
-            } catch (error) {
-              // Ignore errors in API routes
-            }
-          },
-        },
-      }
-    )
+    const supabase = await createServerSupabaseClient()
 
     // Get authenticated user from cookies
     const {
@@ -46,10 +25,18 @@ export async function POST(request: NextRequest) {
     // Debug: Log auth status
     console.log('[Checkout] Auth check - user exists:', !!user, 'error:', userError?.message)
 
+    // Create response with debug headers
+    const createResponse = (data: any, status: number) => {
+      const response = NextResponse.json(data, { status })
+      response.headers.set('x-debug-auth-user', user ? 'yes' : 'no')
+      response.headers.set('x-debug-cookie-present', hasSupabaseCookie ? 'yes' : 'no')
+      return response
+    }
+
     if (!user) {
-      return NextResponse.json(
+      return createResponse(
         { success: false, error: 'Not signed in' },
-        { status: 401 }
+        401
       )
     }
 
@@ -129,16 +116,21 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Checkout] Created session ${checkoutSession.id} for user ${userId}, product ${product_key}`)
 
-    return NextResponse.json({
+    return createResponse({
       success: true,
       url: checkoutSession.url,
-    })
+    }, 200)
   } catch (error: any) {
     console.error('[Checkout] Error creating checkout session:', error)
-    return NextResponse.json(
+    const cookieHeader = request.headers.get('cookie') || ''
+    const hasSupabaseCookie = cookieHeader.includes('sb-')
+    const response = NextResponse.json(
       { success: false, error: error.message || 'Failed to create checkout session' },
       { status: 500 }
     )
+    response.headers.set('x-debug-auth-user', 'no')
+    response.headers.set('x-debug-cookie-present', hasSupabaseCookie ? 'yes' : 'no')
+    return response
   }
 }
 

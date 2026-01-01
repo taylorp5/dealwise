@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import ScriptWizard from '@/components/ScriptWizard'
 import { useAuth } from '@/contexts/AuthContext'
 import Button from '@/components/ui/Button'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 
 export default function ScriptPage() {
   const { user, loading: authLoading } = useAuth()

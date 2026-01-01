@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai/client'
 import type { CompareOffersRequest, CompareOffersResponse } from '@/lib/types/api'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

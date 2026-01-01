@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai/client'
 import { analyzeDealerMessage } from '@/lib/prompts/copilot'
 import type { AddMessageRequest, CopilotResponse } from '@/lib/types/copilot'
@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

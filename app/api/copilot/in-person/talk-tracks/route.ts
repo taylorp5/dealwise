@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { buildInPersonLiveSystemPrompt, buildInPersonLiveUserPrompt } from '@/lib/prompts/copilot_in_person_live'
@@ -120,7 +120,7 @@ function generateCannedFallback(request: TalkTracksRequest): TalkTracksResponse 
 export async function POST(request: NextRequest) {
   try {
     // Authentication check
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const authHeader = request.headers.get('authorization')
     let userId: string | null = null
     

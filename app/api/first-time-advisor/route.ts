@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai/client'
 import {
   FIRST_TIME_BUYER_ADVISOR_SYSTEM_PROMPT,
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   try {
     // Support Authorization header (Bearer token) and cookie session
     const authHeader = request.headers.get('authorization')
-    let supabase = await createServerClient()
+    let supabase = await createServerSupabaseClient()
     let userId: string | null = null
 
     // If Bearer token is provided, create a client with that token for RLS

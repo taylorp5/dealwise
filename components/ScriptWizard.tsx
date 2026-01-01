@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 import Card from './ui/Card'
 import Button from './ui/Button'
 import FinancingHelper from './FinancingHelper'

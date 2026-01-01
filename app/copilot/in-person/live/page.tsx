@@ -8,7 +8,9 @@ import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import DealStateCard from '@/components/copilot/inPerson/DealStateCard'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 
 interface AdvisorResponse {
   whatsReallyHappening: string

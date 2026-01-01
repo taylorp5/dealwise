@@ -9,7 +9,9 @@ import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
 import { usePackEntitlements } from '@/hooks/usePackEntitlements'
 import { getTaxRateForState } from '@/lib/utils/tax-rates'
 import type { DealPlan } from '@/lib/types/api'
-import { supabase } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
+
+const supabase = createBrowserSupabaseClient()
 import type { 
   FinancingAdvisorAnswers, 
   FinancingRecommendation,

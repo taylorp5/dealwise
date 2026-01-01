@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOpenAIClient } from '@/lib/openai/client'
 import { getScriptWizardPrompts, getBuyerProfile } from '@/lib/prompts/script-wizard'
 import { getPackConfig } from '@/lib/packs/config'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { GenerateScriptRequest, GenerateScriptResponse } from '@/lib/types/api'
 import type { WizardAnswers } from '@/lib/types/wizard'
 
 export async function POST(request: NextRequest) {
   try {
     // Get user from Supabase session using server client
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     
     // Check for Authorization header first (if client passes token)
     const authHeader = request.headers.get('authorization')

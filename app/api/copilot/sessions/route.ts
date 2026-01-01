@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai/client'
 import { getPackConfig } from '@/lib/packs/config'
 import { generateInitialStrategy } from '@/lib/prompts/copilot'
@@ -7,7 +7,7 @@ import type { CreateSessionRequest } from '@/lib/types/copilot'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

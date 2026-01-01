@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
 
 const openai = process.env.OPENAI_API_KEY
@@ -153,7 +153,7 @@ Diagnose the dealer's tactic, determine the correct move, and provide the exact 
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()
