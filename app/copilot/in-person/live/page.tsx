@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePackEntitlements } from '@/hooks/usePackEntitlements'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import DealStateCard from '@/components/copilot/inPerson/DealStateCard'
@@ -23,15 +22,14 @@ interface AdvisorResponse {
 export default function BetweenRoundsAdvisorPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
-  const { ownedPacks } = usePackEntitlements()
-  const hasInPersonPack = hasPack('in_person') || hasAllAccess()
+  const { loading: entitlementsLoading, hasInPerson } = useEntitlements()
   
-  // Entitlement guard
+  // Entitlement guard - wait for entitlements to load before checking
   useEffect(() => {
-    if (!authLoading && !hasInPersonPack) {
+    if (!authLoading && !entitlementsLoading && !hasInPerson) {
       router.push('/copilot/free')
     }
-  }, [authLoading, hasInPersonPack, router])
+  }, [authLoading, entitlementsLoading, hasInPerson, router])
 
   // Prepare Me State (unchanged)
   const [vehiclePrice, setVehiclePrice] = useState('')
@@ -159,7 +157,7 @@ export default function BetweenRoundsAdvisorPage() {
     navigator.clipboard.writeText(text)
   }
 
-  if (authLoading) {
+  if (authLoading || entitlementsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -181,7 +179,7 @@ export default function BetweenRoundsAdvisorPage() {
     )
   }
 
-  if (!hasInPersonPack) {
+  if (!hasInPerson) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
