@@ -394,16 +394,10 @@ export default function PacksPage() {
             </div>
           ) : unlocked ? (
             <>
-              <div className="mb-3 text-center">
-                <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-accent/10 text-accent-hover text-sm font-medium mb-3">
+              <div className="mb-4 text-center">
+                <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-accent/10 text-accent-hover text-sm font-medium">
                   <CheckCircle2 className="w-4 h-4 mr-2" />
                   You have access
-                </div>
-              </div>
-              <div className="w-full mb-3 text-center">
-                <div className="inline-flex items-center px-4 py-2 rounded-lg bg-accent/10 text-accent-hover text-sm font-medium">
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Pack Activated
                 </div>
               </div>
               
