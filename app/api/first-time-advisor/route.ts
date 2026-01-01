@@ -158,10 +158,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (parseError: any) {
+      console.error('[first-time-advisor] Request body parse error:', parseError)
+      return NextResponse.json(
+        { success: false, error: 'Invalid request body' },
+        { status: 400 }
+      )
+    }
+
     const { mode, context, dealerMessage, feeLine, userInput, financingAnswers, moduleType, moduleAnswers, savedMemory } = body
 
-    const openai = getOpenAIClient()
+    let openai
+    try {
+      openai = getOpenAIClient()
+    } catch (openaiError: any) {
+      console.error('[first-time-advisor] OpenAI client initialization error:', openaiError)
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `OpenAI client error: ${openaiError.message || 'Failed to initialize OpenAI client'}` 
+        },
+        { status: 500 }
+      )
+    }
 
     let systemPrompt = ''
     let userPrompt = ''
@@ -348,17 +370,66 @@ Use FORMAT B. Return ONLY the JSON object with responseType "fee_explanation".`
       return NextResponse.json({ success: false, error: 'Invalid mode' }, { status: 400 })
     }
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-    })
+    if (!openai) {
+      return NextResponse.json(
+        { success: false, error: 'OpenAI client not available. OPENAI_API_KEY may be missing.' },
+        { status: 500 }
+      )
+    }
 
-    const aiResponse = JSON.parse(completion.choices[0].message.content || '{}')
+    let completion
+    try {
+      completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+      })
+    } catch (openaiError: any) {
+      console.error('[first-time-advisor] OpenAI API error:', openaiError)
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `OpenAI API error: ${openaiError.message || 'Unknown error'}` 
+        },
+        { status: 500 }
+      )
+    }
+
+    if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+      console.error('[first-time-advisor] Invalid OpenAI response:', completion)
+      return NextResponse.json(
+        { success: false, error: 'Invalid response from OpenAI API' },
+        { status: 500 }
+      )
+    }
+
+    const content = completion.choices[0].message.content
+    if (!content) {
+      console.error('[first-time-advisor] Empty response from OpenAI')
+      return NextResponse.json(
+        { success: false, error: 'Empty response from OpenAI API' },
+        { status: 500 }
+      )
+    }
+
+    let aiResponse
+    try {
+      aiResponse = JSON.parse(content)
+    } catch (parseError: any) {
+      console.error('[first-time-advisor] JSON parse error:', parseError)
+      console.error('[first-time-advisor] Content that failed to parse:', content.substring(0, 500))
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Failed to parse AI response: ${parseError.message}` 
+        },
+        { status: 500 }
+      )
+    }
     
     // Ensure responseType is set for non-conversational modes
     if (mode !== 'conversational' && !aiResponse.responseType) {
@@ -423,9 +494,27 @@ Use FORMAT B. Return ONLY the JSON object with responseType "fee_explanation".`
       data: aiResponse,
     })
   } catch (error: any) {
-    console.error('Error in First-Time Buyer Advisor:', error)
+    console.error('[first-time-advisor] Unexpected error:', error)
+    console.error('[first-time-advisor] Error stack:', error.stack)
+    console.error('[first-time-advisor] Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    })
+    
+    // Provide more helpful error messages
+    let errorMessage = error.message || 'Failed to get advisor response'
+    
+    if (error.message?.includes('OPENAI_API_KEY')) {
+      errorMessage = 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.'
+    } else if (error.message?.includes('fetch')) {
+      errorMessage = 'Network error connecting to OpenAI API. Please try again.'
+    } else if (error.message?.includes('rate limit')) {
+      errorMessage = 'OpenAI API rate limit exceeded. Please try again in a moment.'
+    }
+    
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to get advisor response' },
+      { success: false, error: errorMessage },
       { status: 500 }
     )
   }
