@@ -400,42 +400,31 @@ export default function PacksPage() {
                   You have access
                 </div>
               </div>
-              <Button
-                className="w-full mb-3"
-                variant={selected ? 'secondary' : 'primary'}
-                onClick={() => handleSelect(pack.id)}
-              >
-                {selected ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Currently Active
-                  </>
-                ) : (
-                  <>
-                    Activate This Pack
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-              
-              {/* Show links immediately after unlock, not just when selected */}
-              <div className="bg-brand-background border border-brand-border rounded-lg p-4">
-                <div className="flex items-start space-x-2 mb-3">
-                    <Shield className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-brand-ink mb-1">
-                      {selected ? 'Pack Active' : 'Pack Unlocked'}
-                    </p>
-                    <p className="text-xs text-brand-muted mb-2">
-                      Access enhanced features through these links:
-                    </p>
-                    <p className="text-xs text-brand-muted/80 italic mb-3">
-                      These links take you to the enhanced versions with pack-specific features.
-                    </p>
-                  </div>
+              <div className="w-full mb-3 text-center">
+                <div className="inline-flex items-center px-4 py-2 rounded-lg bg-accent/10 text-accent-hover text-sm font-medium">
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Pack Activated
                 </div>
-                <div className="space-y-2">
-                  {!isBundle && (
+              </div>
+              
+              {/* Show links for individual packs only (not bundle) */}
+              {!isBundle && (
+                <div className="bg-brand-background border border-brand-border rounded-lg p-4">
+                  <div className="flex items-start space-x-2 mb-3">
+                    <Shield className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-brand-ink mb-1">
+                        Pack Unlocked
+                      </p>
+                      <p className="text-xs text-brand-muted mb-2">
+                        Access enhanced features through these links:
+                      </p>
+                      <p className="text-xs text-brand-muted/80 italic mb-3">
+                        These links take you to the enhanced versions with pack-specific features.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
                     <Link 
                       href={pack.id === 'first_time' ? '/analyzer/first-time' : 
                             pack.id === 'in_person' ? '/analyzer/in-person' : 
@@ -445,44 +434,15 @@ export default function PacksPage() {
                       <span className="text-sm font-medium text-brand-ink">Listing Analyzer</span>
                       <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
                     </Link>
-                  )}
-                  {isBundle && (
-                    <>
+                    {pack.id !== 'in_person' && (
                       <Link 
-                        href="/analyzer/first-time"
+                        href="/calculator" 
                         className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
                       >
-                        <span className="text-sm font-medium text-brand-ink">First-Time Buyer Analyzer</span>
+                        <span className="text-sm font-medium text-brand-ink">Smart OTD Builder</span>
                         <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
                       </Link>
-                      <Link 
-                        href="/analyzer/in-person"
-                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                      >
-                        <span className="text-sm font-medium text-brand-ink">In-Person Analyzer</span>
-                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                    </>
-                  )}
-                  {!isBundle && pack.id !== 'in_person' && (
-                    <Link 
-                      href="/calculator" 
-                      className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                    >
-                      <span className="text-sm font-medium text-brand-ink">Smart OTD Builder</span>
-                      <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  )}
-                  {isBundle && (
-                    <Link 
-                      href="/calculator" 
-                      className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                    >
-                      <span className="text-sm font-medium text-brand-ink">Smart OTD Builder</span>
-                      <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  )}
-                  {!isBundle && (
+                    )}
                     <Link 
                       href={getCopilotRouteForPack(pack.id)} 
                       className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
@@ -494,27 +454,9 @@ export default function PacksPage() {
                       </span>
                       <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
                     </Link>
-                  )}
-                  {isBundle && (
-                    <>
-                      <Link 
-                        href="/copilot/first-time"
-                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                      >
-                        <span className="text-sm font-medium text-brand-ink">First-Time Buyer Draft Builder</span>
-                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                      <Link 
-                        href="/copilot/in-person"
-                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                      >
-                        <span className="text-sm font-medium text-brand-ink">In-Person Draft Builder</span>
-                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                    </>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             <div>
