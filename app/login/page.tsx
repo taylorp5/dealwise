@@ -13,6 +13,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false)
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
@@ -37,10 +41,69 @@ export default function LoginPage() {
     }
   }
 
+  // Email validation helper
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotPasswordLoading(true)
+    setError(null)
+
+    // Validate email
+    if (!forgotPasswordEmail.trim()) {
+      setError('Please enter your email address')
+      setForgotPasswordLoading(false)
+      return
+    }
+
+    if (!isValidEmail(forgotPasswordEmail)) {
+      setError('Please enter a valid email address')
+      setForgotPasswordLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: `${window.location.origin}/auth/reset`,
+      })
+
+      if (error) {
+        console.error('[Forgot Password] Error:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+        })
+        setError(error.message)
+        setForgotPasswordLoading(false)
+        return
+      }
+
+      setForgotPasswordSuccess(true)
+      setForgotPasswordLoading(false)
+    } catch (err: any) {
+      console.error('[Forgot Password] Unexpected error:', {
+        message: err.message,
+        name: err.name,
+      })
+      setError(err.message || 'An error occurred. Please try again.')
+      setForgotPasswordLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address')
+      setLoading(false)
+      return
+    }
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -113,9 +176,18 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <input
                 id="password"
                 type="password"
@@ -126,6 +198,66 @@ export default function LoginPage() {
                 placeholder="••••••••"
               />
             </div>
+
+            {showForgotPassword && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+                {forgotPasswordSuccess ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-700">
+                      Check your email for a password reset link. If you don't see it, check your spam folder.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(false)
+                        setForgotPasswordSuccess(false)
+                        setForgotPasswordEmail('')
+                      }}
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Back to sign in
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-sm font-medium text-gray-900">Reset Password</h3>
+                    <p className="text-sm text-gray-600">
+                      Enter your email address and we'll send you a link to reset your password.
+                    </p>
+                    <form onSubmit={handleForgotPassword} className="space-y-3">
+                      <input
+                        type="email"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="submit"
+                          disabled={forgotPasswordLoading}
+                          className="flex-1"
+                        >
+                          {forgotPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setShowForgotPassword(false)
+                            setForgotPasswordEmail('')
+                            setError(null)
+                          }}
+                          className="flex-1 bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Google Sign In Button */}
             <button

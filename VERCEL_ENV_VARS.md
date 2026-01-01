@@ -40,3 +40,7 @@
 - Without `SUPABASE_SERVICE_ROLE_KEY`, some pack unlock features may not work due to RLS
 - Tax lookup will fall back to state-based estimates if TaxJar/Avalara keys are not provided
 
+
+
+
+

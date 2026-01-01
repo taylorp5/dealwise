@@ -34,3 +34,7 @@ WHERE a.deal_id = d.id
 AND a.user_id IS NULL;
 
 
+
+
+
+

@@ -13,9 +13,11 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Supabase automatically handles the OAuth callback via URL hash
-        // The client is configured with detectSessionInUrl: true, so it should
-        // automatically extract the session from the URL hash
+        // Wait a bit for Supabase to process the URL hash
+        // The client is configured with detectSessionInUrl: true
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Get session - Supabase should have extracted it from the URL hash by now
         const { data, error } = await supabase.auth.getSession()
 
         if (error) {
@@ -35,31 +37,37 @@ export default function AuthCallbackPage() {
           console.log('[Auth Callback] Success, user:', data.session.user.email)
           setStatus('success')
           setMessage('Sign in successful! Redirecting...')
-          // Redirect to home after a brief delay
+          // Give AuthContext time to update, then redirect
           setTimeout(() => {
             router.push('/')
             router.refresh()
-          }, 1000)
+          }, 1500)
         } else {
-          // Try to get the session again after a short delay (in case it's still processing)
-          console.log('[Auth Callback] No session found, retrying...')
-          setTimeout(async () => {
+          // Retry a few times - OAuth callback might take a moment to process
+          let retries = 3
+          const retryInterval = setInterval(async () => {
             const { data: retryData, error: retryError } = await supabase.auth.getSession()
+            
             if (retryData.session && retryData.session.user) {
               console.log('[Auth Callback] Success on retry, user:', retryData.session.user.email)
+              clearInterval(retryInterval)
               setStatus('success')
               setMessage('Sign in successful! Redirecting...')
               setTimeout(() => {
                 router.push('/')
                 router.refresh()
-              }, 1000)
+              }, 1500)
             } else {
-              console.error('[Auth Callback] No session found after retry:', retryError)
-              setStatus('error')
-              setMessage('No session found. Please try signing in again.')
-              setTimeout(() => {
-                router.push('/login')
-              }, 3000)
+              retries--
+              if (retries <= 0) {
+                clearInterval(retryInterval)
+                console.error('[Auth Callback] No session found after retries')
+                setStatus('error')
+                setMessage('No session found. Please try signing in again.')
+                setTimeout(() => {
+                  router.push('/login')
+                }, 3000)
+              }
             }
           }, 500)
         }
