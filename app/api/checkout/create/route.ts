@@ -73,44 +73,18 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json()
-    const { product_key } = body
-
-    if (!product_key) {
-      return NextResponse.json(
-        { success: false, error: 'Missing product_key' },
-        { status: 400 }
-      )
-    }
-
-    // Validate product_key
-    const validProductKeys = ['first_time', 'in_person', 'bundle_both']
-    if (!validProductKeys.includes(product_key)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid product_key. Must be one of: first_time, in_person, bundle_both' },
-        { status: 400 }
-      )
-    }
-
-    // Map product_key to Stripe price ID from environment variables
-    const priceIdMap: Record<string, string> = {
-      first_time: process.env.STRIPE_PRICE_FIRST_TIME!,
-      in_person: process.env.STRIPE_PRICE_IN_PERSON!,
-      bundle_both: process.env.STRIPE_PRICE_BUNDLE!,
-    }
-
-    const priceId = priceIdMap[product_key]
+    const { priceId } = body
 
     if (!priceId) {
-      console.error(`[Checkout] Missing Stripe price ID for product_key: ${product_key}`)
       return NextResponse.json(
-        { success: false, error: 'Product pricing not configured' },
-        { status: 500 }
+        { success: false, error: 'Missing priceId' },
+        { status: 400 }
       )
     }
 
     // Validate that priceId is a Stripe Price ID (starts with "price_")
     if (!priceId.startsWith('price_')) {
-      console.error(`[Checkout] Invalid Stripe price ID format for product_key: ${product_key}. Got: ${priceId}`)
+      console.error(`[Checkout] Invalid Stripe price ID format. Got: ${priceId}`)
       return NextResponse.json(
         { success: false, error: `Invalid Stripe price ID. Expected price_... but got: ${priceId.substring(0, 20)}...` },
         { status: 400 }
@@ -137,7 +111,7 @@ export async function POST(request: NextRequest) {
         cancel_url: `${baseUrl}/packs?checkout=cancel`,
         metadata: {
           user_id: userId,
-          product_key: product_key,
+          price_id: priceId,
         },
       })
     } catch (stripeError: any) {
@@ -156,7 +130,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[Checkout] Created session ${checkoutSession.id} for user ${userId}, product ${product_key}, price ${priceId}`)
+    console.log(`[Checkout] Created session ${checkoutSession.id} for user ${userId}, price ${priceId}`)
 
     // Return checkout URL for frontend redirect
     const response = NextResponse.json({
