@@ -154,8 +154,17 @@ export default function LoginPage() {
           name: error.name,
           fullError: error,
         })
-        // Always show the exact error message from Supabase
-        const errorMessage = error.message || 'Sign in failed. Please try again.'
+        
+        // Enhanced error message for invalid credentials
+        let errorMessage = error.message || 'Sign in failed. Please try again.'
+        
+        // Check if it's an invalid credentials error
+        if (error.message?.toLowerCase().includes('invalid') || 
+            error.message?.toLowerCase().includes('credentials') ||
+            error.status === 400) {
+          errorMessage = 'Invalid email or password. If you originally signed up with Google, use Google sign-in or set a password in Settings.'
+        }
+        
         setError(errorMessage)
         setToast({ message: errorMessage, type: 'error' })
         setLoading(false)
@@ -272,6 +281,11 @@ export default function LoginPage() {
                     <p className="text-sm text-gray-600">
                       Enter your email address and we'll send you a link to reset your password.
                     </p>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-xs text-yellow-800">
+                        <strong>Note:</strong> Password reset emails may not arrive yet. If you originally signed up with Google, use Google sign-in or set a password in Settings.
+                      </p>
+                    </div>
                     <form onSubmit={handleForgotPassword} className="space-y-3">
                       <input
                         type="email"

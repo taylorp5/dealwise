@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, Settings } from 'lucide-react'
 import Button from './ui/Button'
 
 export default function AppHeader() {
@@ -115,6 +115,14 @@ export default function AppHeader() {
                     <div className="px-4 py-3 border-b border-brand-border">
                       <p className="text-sm font-medium text-brand-ink truncate">{user.email}</p>
                     </div>
+                    <Link
+                      href="/settings"
+                      className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-brand-muted hover:bg-brand-background transition-colors rounded-md mx-1"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </Link>
                     <button
                       onClick={signOut}
                       className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-brand-muted hover:bg-brand-background transition-colors rounded-md mx-1"
