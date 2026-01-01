@@ -900,17 +900,21 @@ Explain why this message works for first-time buyers and what pitfalls it avoids
                 </div>
 
                 {/* Section 2: Why This Works (2-3 bullets, coach-like) */}
-                {result.whyThisWorks && result.whyThisWorks.length > 0 && (
+                {result.whyThisWorks && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Why This Works</h3>
-                    <ul className="space-y-2.5">
-                      {result.whyThisWorks.slice(0, 3).map((bullet, i) => (
-                        <li key={i} className="flex items-start text-sm text-gray-700">
-                          <span className="text-slate-600 mr-3 mt-0.5 font-semibold">•</span>
-                          <span>{bullet}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {Array.isArray(result.whyThisWorks) ? (
+                      <ul className="space-y-2.5">
+                        {result.whyThisWorks.slice(0, 3).map((bullet, i) => (
+                          <li key={i} className="flex items-start text-sm text-gray-700">
+                            <span className="text-slate-600 mr-3 mt-0.5 font-semibold">•</span>
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-700">{result.whyThisWorks}</p>
+                    )}
                   </div>
                 )}
 
