@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import Toast from '@/components/Toast'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null)
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
@@ -65,28 +67,48 @@ export default function LoginPage() {
       return
     }
 
+    console.log('[AUTH] Calling resetPasswordForEmail for:', forgotPasswordEmail)
+    console.log('[AUTH] Redirect URL:', `${window.location.origin}/auth/reset`)
+
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
         redirectTo: `${window.location.origin}/auth/reset`,
       })
 
+      console.log('[AUTH] resetPasswordForEmail response:', {
+        hasData: !!data,
+        hasError: !!error,
+        errorMessage: error?.message,
+        errorStatus: error?.status,
+        errorName: error?.name,
+      })
+
       if (error) {
-        console.error('[Forgot Password] Error:', {
+        console.error('[AUTH] resetPasswordForEmail ERROR:', {
+          method: 'resetPasswordForEmail',
+          httpStatus: error.status,
           message: error.message,
-          status: error.status,
           name: error.name,
+          fullError: error,
         })
-        setError(error.message)
+        // Always show the exact error message from Supabase
+        const errorMessage = error.message || 'Failed to send password reset email. Please try again.'
+        setError(errorMessage)
+        setToast({ message: errorMessage, type: 'error' })
         setForgotPasswordLoading(false)
         return
       }
 
+      console.log('[AUTH] resetPasswordForEmail SUCCESS - email should be sent')
       setForgotPasswordSuccess(true)
+      setToast({ message: 'Password reset email sent! Check your inbox.', type: 'success' })
       setForgotPasswordLoading(false)
     } catch (err: any) {
-      console.error('[Forgot Password] Unexpected error:', {
+      console.error('[AUTH] resetPasswordForEmail EXCEPTION:', {
+        method: 'resetPasswordForEmail',
         message: err.message,
         name: err.name,
+        stack: err.stack,
       })
       setError(err.message || 'An error occurred. Please try again.')
       setForgotPasswordLoading(false)
@@ -105,39 +127,57 @@ export default function LoginPage() {
       return
     }
 
+    console.log('[AUTH] Calling signInWithPassword for:', email)
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
+      console.log('[AUTH] signInWithPassword response:', {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        userEmail: data?.user?.email,
+        hasError: !!error,
+        errorMessage: error?.message,
+        errorStatus: error?.status,
+        errorName: error?.name,
+      })
+
       if (error) {
-        // Log error details (no secrets)
-        console.error('[Sign In] Error:', {
+        console.error('[AUTH] signInWithPassword ERROR:', {
+          method: 'signInWithPassword',
+          httpStatus: error.status,
           message: error.message,
-          status: error.status,
           name: error.name,
+          fullError: error,
         })
-        setError(error.message)
+        // Always show the exact error message from Supabase
+        const errorMessage = error.message || 'Sign in failed. Please try again.'
+        setError(errorMessage)
+        setToast({ message: errorMessage, type: 'error' })
         setLoading(false)
         return
       }
 
       // Success - redirect to home
       if (data.user) {
-        console.log('[Sign In] Success, user:', data.user.email)
+        console.log('[AUTH] signInWithPassword SUCCESS - user:', data.user.email)
         router.push('/')
         router.refresh()
       } else {
-        console.error('[Sign In] No user in response')
-        setError('Sign in failed. Please try again.')
+        console.error('[AUTH] signInWithPassword - No user in response')
+        setError('Sign in failed. No user data received.')
         setLoading(false)
       }
     } catch (err: any) {
-      // Log error details (no secrets)
-      console.error('[Sign In] Unexpected error:', {
+      console.error('[AUTH] signInWithPassword EXCEPTION:', {
+        method: 'signInWithPassword',
         message: err.message,
         name: err.name,
+        stack: err.stack,
       })
       setError(err.message || 'An error occurred. Please check your connection and try again.')
       setLoading(false)
@@ -145,7 +185,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h1>
@@ -303,6 +351,7 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }
 

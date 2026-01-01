@@ -46,22 +46,38 @@ function ResetPasswordForm() {
       return
     }
 
+    console.log('[AUTH] Calling updateUser to reset password')
+
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         password: password,
       })
 
+      console.log('[AUTH] updateUser response:', {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasError: !!error,
+        errorMessage: error?.message,
+        errorStatus: error?.status,
+        errorName: error?.name,
+      })
+
       if (error) {
-        console.error('[Reset Password] Error:', {
+        console.error('[AUTH] updateUser ERROR:', {
+          method: 'updateUser',
+          httpStatus: error.status,
           message: error.message,
-          status: error.status,
           name: error.name,
+          fullError: error,
         })
-        setError(error.message)
+        // Always show the exact error message from Supabase
+        const errorMessage = error.message || 'Failed to reset password. Please try again.'
+        setError(errorMessage)
         setLoading(false)
         return
       }
 
+      console.log('[AUTH] updateUser SUCCESS - Password reset complete')
       setSuccess(true)
       setLoading(false)
       
@@ -70,9 +86,11 @@ function ResetPasswordForm() {
         router.push('/login')
       }, 2000)
     } catch (err: any) {
-      console.error('[Reset Password] Unexpected error:', {
+      console.error('[AUTH] updateUser EXCEPTION:', {
+        method: 'updateUser',
         message: err.message,
         name: err.name,
+        stack: err.stack,
       })
       setError(err.message || 'An error occurred. Please try again.')
       setLoading(false)

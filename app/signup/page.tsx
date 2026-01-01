@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import Toast from '@/components/Toast'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -15,6 +16,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null)
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
@@ -72,20 +74,37 @@ export default function SignupPage() {
       return
     }
 
+    console.log('[AUTH] Calling signUp for:', email)
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       })
 
+      console.log('[AUTH] signUp response:', {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        userEmail: data?.user?.email,
+        hasError: !!error,
+        errorMessage: error?.message,
+        errorStatus: error?.status,
+        errorName: error?.name,
+      })
+
       if (error) {
-        // Log error details (no secrets)
-        console.error('[Sign Up] Error:', {
+        console.error('[AUTH] signUp ERROR:', {
+          method: 'signUp',
+          httpStatus: error.status,
           message: error.message,
-          status: error.status,
           name: error.name,
+          fullError: error,
         })
-        setError(error.message)
+        // Always show the exact error message from Supabase
+        const errorMessage = error.message || 'Failed to create account. Please try again.'
+        setError(errorMessage)
+        setToast({ message: errorMessage, type: 'error' })
         setLoading(false)
         return
       }
@@ -93,7 +112,7 @@ export default function SignupPage() {
       // Check if email confirmation is required
       if (data.user && !data.session) {
         // Email confirmation required
-        console.log('[Sign Up] Email confirmation required for:', data.user.email)
+        console.log('[AUTH] signUp SUCCESS - Email confirmation required for:', data.user.email)
         setSuccess('Account created! Please check your email to confirm your account before signing in.')
         setLoading(false)
         // Clear form
@@ -105,7 +124,7 @@ export default function SignupPage() {
 
       // User is immediately signed in (no email confirmation required)
       if (data.user && data.session) {
-        console.log('[Sign Up] Success, user signed in:', data.user.email)
+        console.log('[AUTH] signUp SUCCESS - User signed in immediately:', data.user.email)
         setSuccess('Account created successfully!')
         setLoading(false)
         // Redirect after a brief delay to show success message
@@ -117,17 +136,18 @@ export default function SignupPage() {
       }
 
       // Fallback: account created but unclear state
-      console.log('[Sign Up] Account created, state unclear:', { user: data.user, session: data.session })
+      console.log('[AUTH] signUp - Unclear state:', { user: data.user, session: data.session })
       setSuccess('Account created! Please sign in.')
       setLoading(false)
       setTimeout(() => {
         router.push('/login')
       }, 2000)
     } catch (err: any) {
-      // Log error details (no secrets)
-      console.error('[Sign Up] Unexpected error:', {
+      console.error('[AUTH] signUp EXCEPTION:', {
+        method: 'signUp',
         message: err.message,
         name: err.name,
+        stack: err.stack,
       })
       setError(err.message || 'An error occurred. Please check your connection and try again.')
       setLoading(false)
@@ -135,7 +155,15 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Sign Up</h1>
@@ -250,6 +278,7 @@ export default function SignupPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }
 
