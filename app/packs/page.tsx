@@ -152,14 +152,14 @@ export default function PacksPage() {
         return
       }
 
-      const { data: { session } } = await supabase.auth.getSession()
-      const headers: HeadersInit = { 'Content-Type': 'application/json' }
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-      
       // Create Stripe Checkout session
+      // Using same-origin fetch - cookies are sent automatically
       const res = await fetch('/api/checkout/create', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Ensure cookies are sent
         body: JSON.stringify({ product_key: productKey }),
       })
       

@@ -1,20 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
   try {
-    // Require authentication
-    const supabase = await createServerClient()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    // Debug: Log request origin
+    const origin = request.headers.get('origin') || request.headers.get('referer') || 'unknown'
+    console.log('[Checkout] Request received from origin:', origin)
 
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    // Create Supabase server client with cookie support
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Ignore errors in API routes
+            }
+          },
+          remove(name: string, options: any) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // Ignore errors in API routes
+            }
+          },
+        },
+      }
+    )
+
+    // Get authenticated user from cookies
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    // Debug: Log auth status
+    console.log('[Checkout] Auth check - user exists:', !!user, 'error:', userError?.message)
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Not signed in' },
+        { status: 401 }
+      )
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Initialize Stripe (inside function to avoid build-time errors)
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY
