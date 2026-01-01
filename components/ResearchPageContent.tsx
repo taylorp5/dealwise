@@ -146,6 +146,40 @@ export default function ResearchPageContent(props?: ResearchPageContentProps) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
 
+      // First, try to resolve the listing URL
+      let resolvedData: any = null
+      try {
+        const resolveResponse = await fetch('/api/listing/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: listingUrl }),
+        })
+        
+        if (resolveResponse.ok) {
+          const resolveResult = await resolveResponse.json()
+          if (resolveResult.ok && resolveResult.data) {
+            resolvedData = resolveResult.data
+            // Show review step with resolved data
+            setExtractedListing({
+              ...resolvedData,
+              sourceUrl: listingUrl,
+            })
+            setShowReviewStep(true)
+            setAnalyzing(false)
+            return
+          } else if (resolveResult.fallbackSuggested) {
+            // URL resolution failed, suggest paste mode
+            setError(`Could not automatically extract from this URL. Please use "Copy from Listing Page" or "Manual Entry" instead.`)
+            setAnalyzing(false)
+            return
+          }
+        }
+      } catch (resolveError) {
+        // If resolve fails, fall back to analyze-listing
+        console.warn('Listing resolve failed, falling back to analyze-listing:', resolveError)
+      }
+
+      // Fallback to analyze-listing if resolve didn't work
       const response = await fetch('/api/analyze-listing', {
         method: 'POST',
         headers,
