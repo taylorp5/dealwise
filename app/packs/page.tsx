@@ -45,6 +45,19 @@ export default function PacksPage() {
 
   useEffect(() => {
     fetchPacks()
+    
+    // Handle checkout success/cancel from URL params
+    const params = new URLSearchParams(window.location.search)
+    const checkoutStatus = params.get('checkout')
+    if (checkoutStatus === 'success') {
+      // Refresh packs to show newly unlocked pack
+      fetchPacks(false)
+      // Clean up URL
+      window.history.replaceState({}, '', '/packs')
+    } else if (checkoutStatus === 'cancel') {
+      // Clean up URL
+      window.history.replaceState({}, '', '/packs')
+    }
   }, [])
 
   const fetchPacks = async (showLoading = true) => {
@@ -126,19 +139,33 @@ export default function PacksPage() {
     }
 
     try {
+      // Map packId to product_key for Stripe
+      const productKeyMap: Record<string, 'first_time' | 'in_person' | 'bundle_both'> = {
+        first_time: 'first_time',
+        in_person: 'in_person',
+        // Add bundle_both if needed
+      }
+
+      const productKey = productKeyMap[packId]
+      if (!productKey) {
+        alert('This pack is not available for purchase yet.')
+        return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       const headers: HeadersInit = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
       
-      const res = await fetch('/api/packs/unlock', {
+      // Create Stripe Checkout session
+      const res = await fetch('/api/checkout/create', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ packId }),
+        body: JSON.stringify({ product_key: productKey }),
       })
       
       const data = await res.json()
       if (!data.success) {
-        console.error('Failed to unlock pack:', data.error)
+        console.error('Failed to create checkout session:', data.error)
         
         // Check if it's an authentication error
         if (res.status === 401 || (data as any).error === 'Unauthorized' || (data as any).error === 'Invalid token') {
@@ -147,48 +174,19 @@ export default function PacksPage() {
           return
         }
         
-        alert(`Unable to unlock pack. Please try again.`)
+        alert(`Unable to start checkout. Please try again.`)
         return
       }
-      
-      // Update localStorage entitlements immediately
-      const { addPack } = await import('@/lib/packs/entitlements')
-      addPack(packId)
-      
-      // Update UI state immediately - ensure the pack is marked as unlocked
-      setUserPacks((prev) => {
-        const exists = prev.find((p) => p.packId === packId)
-        if (exists) {
-          return prev.map((p) =>
-            p.packId === packId ? { ...p, isUnlocked: true, unlockedAt: new Date().toISOString() } : p
-          )
-        }
-        // If pack doesn't exist in state yet, add it
-        return [...prev, { packId, isUnlocked: true, unlockedAt: new Date().toISOString() }]
-      })
-      
-      // Note: We no longer set selected_pack_id in localStorage for analyzer variants
-      // Analyzer variants are determined by route, not localStorage
-      // window.dispatchEvent(new Event('packEntitlementsChanged')) // Disabled to prevent state overwrite
-      window.dispatchEvent(new Event('packSelectionChanged'))
-      
-      // Don't refresh from API immediately - the state update is sufficient
-      // The next time the page loads or user refreshes, it will sync from server
-      // This prevents the button from disappearing
-      
-      // Show success message with guidance
-      if (packId === 'first_time') {
-        const message = 'First-Time Buyer Pack unlocked! ✅\n\nYou now have access to:\n• First-Time Buyer Advisor\n• Enhanced Negotiation Draft Builder\n• Educational guidance and checklists\n\nClick "Activate This Pack" to start using it.'
-        alert(message)
-      } else if (packId === 'in_person') {
-        const message = 'In-Person Negotiation Pack unlocked! ✅\n\nYou now have access to:\n• Prepare Me mode (pre-dealership checklist)\n• Enhanced Listing Analyzer (dealer leverage insights, walk-in plan, talk tracks)\n• Dealer Simulation (Coming Soon)\n• In-person talk tracks and tactics\n\nClick "Activate This Pack" to start using it.'
-        alert(message)
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url
       } else {
-        alert('Pack unlocked successfully! Click "Activate This Pack" to start using it.')
+        alert('Checkout URL not received. Please try again.')
       }
     } catch (err: any) {
-      console.error('Error unlocking pack:', err)
-      alert('An error occurred while unlocking the pack. Please try again.')
+      console.error('Error creating checkout session:', err)
+      alert('An error occurred while starting checkout. Please try again.')
     }
   }
 
