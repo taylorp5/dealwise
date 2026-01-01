@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
@@ -23,7 +24,7 @@ export default function SignupPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
@@ -58,46 +59,62 @@ export default function SignupPage() {
     }
 
     try {
-      // Debug: Log Supabase configuration in development
-      if (process.env.NODE_ENV === 'development') {
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-        console.log('[Sign Up] Attempting sign-up with Supabase URL:', url ? `${url.substring(0, 30)}...` : 'MISSING')
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       })
 
       if (error) {
-        // Enhanced error logging for debugging
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[Sign Up] Supabase error:', {
-            message: error.message,
-            status: error.status,
-            name: error.name,
-          })
-        }
+        // Log error details (no secrets)
+        console.error('[Sign Up] Error:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+        })
         setError(error.message)
         setLoading(false)
         return
       }
 
-      // Success - redirect to home
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Sign Up] Success, user:', data.user?.email)
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        // Email confirmation required
+        console.log('[Sign Up] Email confirmation required for:', data.user.email)
+        setSuccess('Account created! Please check your email to confirm your account before signing in.')
+        setLoading(false)
+        // Clear form
+        setEmail('')
+        setPassword('')
+        setConfirmPassword('')
+        return
       }
-      router.push('/')
-      router.refresh()
+
+      // User is immediately signed in (no email confirmation required)
+      if (data.user && data.session) {
+        console.log('[Sign Up] Success, user signed in:', data.user.email)
+        setSuccess('Account created successfully!')
+        setLoading(false)
+        // Redirect after a brief delay to show success message
+        setTimeout(() => {
+          router.push('/')
+          router.refresh()
+        }, 1500)
+        return
+      }
+
+      // Fallback: account created but unclear state
+      console.log('[Sign Up] Account created, state unclear:', { user: data.user, session: data.session })
+      setSuccess('Account created! Please sign in.')
+      setLoading(false)
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
     } catch (err: any) {
-      // Enhanced error logging for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[Sign Up] Unexpected error:', {
-          message: err.message,
-          stack: err.stack,
-          name: err.name,
-        })
-      }
+      // Log error details (no secrets)
+      console.error('[Sign Up] Unexpected error:', {
+        message: err.message,
+        name: err.name,
+      })
       setError(err.message || 'An error occurred. Please check your connection and try again.')
       setLoading(false)
     }
@@ -116,6 +133,11 @@ export default function SignupPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-700">{success}</p>
               </div>
             )}
 

@@ -22,7 +22,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
@@ -43,46 +43,39 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      // Debug: Log Supabase configuration in development
-      if (process.env.NODE_ENV === 'development') {
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-        console.log('[Sign In] Attempting sign-in with Supabase URL:', url ? `${url.substring(0, 30)}...` : 'MISSING')
-      }
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
-        // Enhanced error logging for debugging
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[Sign In] Supabase error:', {
-            message: error.message,
-            status: error.status,
-            name: error.name,
-          })
-        }
+        // Log error details (no secrets)
+        console.error('[Sign In] Error:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+        })
         setError(error.message)
         setLoading(false)
         return
       }
 
       // Success - redirect to home
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Sign In] Success, user:', data.user?.email)
+      if (data.user) {
+        console.log('[Sign In] Success, user:', data.user.email)
+        router.push('/')
+        router.refresh()
+      } else {
+        console.error('[Sign In] No user in response')
+        setError('Sign in failed. Please try again.')
+        setLoading(false)
       }
-      router.push('/')
-      router.refresh()
     } catch (err: any) {
-      // Enhanced error logging for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[Sign In] Unexpected error:', {
-          message: err.message,
-          stack: err.stack,
-          name: err.name,
-        })
-      }
+      // Log error details (no secrets)
+      console.error('[Sign In] Unexpected error:', {
+        message: err.message,
+        name: err.name,
+      })
       setError(err.message || 'An error occurred. Please check your connection and try again.')
       setLoading(false)
     }
