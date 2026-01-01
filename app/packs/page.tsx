@@ -268,6 +268,12 @@ export default function PacksPage() {
         'If they say X → say Y response guide',
         'OTD closing scripts & walk-away signals',
       ],
+      bundle: [
+        'Everything in First-Time Buyer Pack',
+        'Everything in In-Person Negotiation Pack',
+        'Best value: Save $3 compared to buying separately',
+        'Complete coverage from first contact to closing',
+      ],
     }
     return benefits[pack.id] || pack.features || []
   }
