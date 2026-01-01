@@ -12,8 +12,8 @@ export const packs: Record<string, PackConfig> = {
       'First-time friendly scripts',
     ],
     education: [
-      'OTD includes taxes, fees, and registration—focus on OTD, not monthly.',
-      'APR is the annualized cost of borrowing—compare against pre-approval if you have one.',
+      'OTD includes taxes, fees, and registration - focus on OTD, not monthly.',
+      'APR is the annualized cost of borrowing - compare against pre-approval if you have one.',
       'Longer terms lower monthly payment but increase total interest paid.',
     ],
     questions: [
@@ -94,8 +94,8 @@ export const packs: Record<string, PackConfig> = {
       'Closing script for OTD',
     ],
     education: [
-      'Practice your talk track—don’t rely on recording; use written notes instead.',
-      'If “manager” pressure starts, slow down: ask for written OTD before deciding.',
+      'Practice your talk track - don\'t rely on recording; use written notes instead.',
+      'If "manager" pressure starts, slow down: ask for written OTD before deciding.',
       'Have 2-3 calm phrases ready for add-on upsells.',
     ],
     questions: [
@@ -104,9 +104,26 @@ export const packs: Record<string, PackConfig> = {
         { value: 'medium', label: 'Comfortable pushing back politely' },
         { value: 'high', label: 'Very firm when needed' },
       ]},
-      { id: 'expected_objections', label: 'Objections you expect', type: 'textarea', required: false, placeholder: 'e.g., “Price is already low”, “Manager approval needed”.' },
+      { id: 'expected_objections', label: 'Objections you expect', type: 'textarea', required: false, placeholder: 'e.g., "Price is already low", "Manager approval needed".' },
       { id: 'has_trade_in', label: 'Trade-in?', type: 'boolean', required: false },
     ],
+  },
+  bundle: {
+    id: 'bundle',
+    name: 'Complete Bundle',
+    description: 'Get both packs at a discounted price: First-Time Buyer Pack + In-Person Negotiation Pack.',
+    features: [
+      'Everything in First-Time Buyer Pack',
+      'Everything in In-Person Negotiation Pack',
+      'Best value for comprehensive coverage',
+      'Unlock both packs with one purchase',
+    ],
+    education: [
+      'The bundle includes all features from both individual packs.',
+      'Perfect if you want complete guidance from first contact through in-person negotiation.',
+      'Save money compared to buying packs separately.',
+    ],
+    questions: [],
   },
 }
 

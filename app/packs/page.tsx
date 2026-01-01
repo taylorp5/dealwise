@@ -215,6 +215,7 @@ export default function PacksPage() {
       cash: DollarSign,
       financing: CreditCard,
       in_person: Users,
+      bundle: Sparkles,
     }
     return icons[packId] || Sparkles
   }
@@ -225,6 +226,7 @@ export default function PacksPage() {
       cash: 'Maximize leverage from your cash position',
       financing: 'Protect your credit while securing better terms',
       in_person: 'Stay in control during in-person negotiations',
+      bundle: 'Complete guidance from first contact through in-person negotiation',
     }
     return outcomes[pack.id] || ''
   }
@@ -235,6 +237,7 @@ export default function PacksPage() {
       cash: 'Leverage your cash position to secure the lowest possible price.',
       financing: 'Master financing negotiations and protect your credit score.',
       in_person: 'Handle in-person pressure tactics and close deals on your terms.',
+      bundle: 'Get both packs at a discounted price. Perfect for comprehensive coverage from start to finish.',
     }
     return valueProps[pack.id] || pack.description
   }
@@ -274,6 +277,7 @@ export default function PacksPage() {
     const selected = selectedPackId === pack.id
     const isComingSoon = pack.comingSoon === true
     const isRecommended = pack.id === 'first_time'
+    const isBundle = pack.id === 'bundle'
     const Icon = getPackIcon(pack.id)
     const valueProp = getPackValueProp(pack)
     const benefits = getPackBenefits(pack)
@@ -425,16 +429,36 @@ export default function PacksPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Link 
-                    href={pack.id === 'first_time' ? '/analyzer/first-time' : 
-                          pack.id === 'in_person' ? '/analyzer/in-person' : 
-                          '/analyzer/free'}
-                    className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                  >
-                    <span className="text-sm font-medium text-brand-ink">Listing Analyzer</span>
-                    <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                  {pack.id !== 'in_person' && (
+                  {!isBundle && (
+                    <Link 
+                      href={pack.id === 'first_time' ? '/analyzer/first-time' : 
+                            pack.id === 'in_person' ? '/analyzer/in-person' : 
+                            '/analyzer/free'}
+                      className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                    >
+                      <span className="text-sm font-medium text-brand-ink">Listing Analyzer</span>
+                      <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  )}
+                  {isBundle && (
+                    <>
+                      <Link 
+                        href="/analyzer/first-time"
+                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                      >
+                        <span className="text-sm font-medium text-brand-ink">First-Time Buyer Analyzer</span>
+                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                      <Link 
+                        href="/analyzer/in-person"
+                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                      >
+                        <span className="text-sm font-medium text-brand-ink">In-Person Analyzer</span>
+                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    </>
+                  )}
+                  {!isBundle && pack.id !== 'in_person' && (
                     <Link 
                       href="/calculator" 
                       className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
@@ -443,17 +467,46 @@ export default function PacksPage() {
                       <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
                     </Link>
                   )}
-                  <Link 
-                    href={getCopilotRouteForPack(pack.id)} 
-                    className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
-                  >
-                    <span className="text-sm font-medium text-brand-ink">
-                      {pack.id === 'first_time' ? 'First-Time Buyer Negotiation Draft Builder' : 
-                       pack.id === 'in_person' ? 'In-Person Negotiation Draft Builder' : 
-                       'Negotiation Draft Builder'}
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                  {isBundle && (
+                    <Link 
+                      href="/calculator" 
+                      className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                    >
+                      <span className="text-sm font-medium text-brand-ink">Smart OTD Builder</span>
+                      <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  )}
+                  {!isBundle && (
+                    <Link 
+                      href={getCopilotRouteForPack(pack.id)} 
+                      className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                    >
+                      <span className="text-sm font-medium text-brand-ink">
+                        {pack.id === 'first_time' ? 'First-Time Buyer Negotiation Draft Builder' : 
+                         pack.id === 'in_person' ? 'In-Person Negotiation Draft Builder' : 
+                         'Negotiation Draft Builder'}
+                      </span>
+                      <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  )}
+                  {isBundle && (
+                    <>
+                      <Link 
+                        href="/copilot/first-time"
+                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                      >
+                        <span className="text-sm font-medium text-brand-ink">First-Time Buyer Draft Builder</span>
+                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                      <Link 
+                        href="/copilot/in-person"
+                        className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
+                      >
+                        <span className="text-sm font-medium text-brand-ink">In-Person Draft Builder</span>
+                        <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </>

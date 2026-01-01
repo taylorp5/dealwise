@@ -1,4 +1,4 @@
-export type PackId = 'first_time' | 'cash' | 'financing' | 'in_person'
+export type PackId = 'first_time' | 'cash' | 'financing' | 'in_person' | 'bundle'
 
 export interface PackFeature {
   title: string
