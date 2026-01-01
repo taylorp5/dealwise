@@ -12,7 +12,6 @@ import Button from '@/components/ui/Button'
 import { packs as packConfigs } from '@/lib/packs/config'
 import type { PackConfig } from '@/lib/types/packs'
 import { getCopilotRouteForPack } from '@/lib/utils/copilot-routes'
-import { STRIPE_PRICES, formatPrice, getBundleSavings, getPriceConfigByPackId } from '@/lib/stripe/prices'
 import { 
   GraduationCap, 
   DollarSign, 
@@ -131,7 +130,7 @@ export default function PacksPage() {
     }
   }
 
-  const handleUnlock = async (priceId: string) => {
+  const handleUnlock = async (packId: string) => {
     // Check if user is authenticated first
     if (!user) {
       const shouldSignIn = confirm('You need to sign in or sign up to unlock packs and access enhanced features.\n\nWould you like to sign in now?')
@@ -142,14 +141,28 @@ export default function PacksPage() {
     }
 
     try {
-      // Create Stripe Checkout session with priceId
+      // Map packId to product_key for Stripe
+      const productKeyMap: Record<string, 'first_time' | 'in_person' | 'bundle_both'> = {
+        first_time: 'first_time',
+        in_person: 'in_person',
+        // Add bundle_both if needed
+      }
+
+      const productKey = productKeyMap[packId]
+      if (!productKey) {
+        alert('This pack is not available for purchase yet.')
+        return
+      }
+
+      // Create Stripe Checkout session
+      // Using same-origin fetch - cookies are sent automatically
       const res = await fetch('/api/checkout/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Ensure cookies are sent
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ product_key: productKey }),
       })
       
       const data = await res.json()
@@ -163,7 +176,7 @@ export default function PacksPage() {
           return
         }
         
-        alert(`Unable to start checkout: ${data.error || 'Please try again.'}`)
+        alert(`Unable to start checkout. Please try again.`)
         return
       }
 
@@ -247,7 +260,6 @@ export default function PacksPage() {
     const Icon = getPackIcon(pack.id)
     const valueProp = getPackValueProp(pack)
     const benefits = getPackBenefits(pack)
-    const priceConfig = getPriceConfigByPackId(pack.id)
     
     return (
       <Card 
@@ -284,14 +296,7 @@ export default function PacksPage() {
                 }`} />
               </div>
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-xl font-semibold text-brand-ink">{pack.name}</h3>
-                  {priceConfig && !unlocked && !isComingSoon && (
-                    <span className="text-lg font-semibold text-brand-ink">
-                      {formatPrice(priceConfig.amount)}
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-xl font-semibold text-brand-ink mb-1">{pack.name}</h3>
                 <div className="flex items-center space-x-2">
                   {isComingSoon ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
@@ -301,16 +306,13 @@ export default function PacksPage() {
                   ) : unlocked ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent-hover border border-accent/30">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Owned
+                      You have access
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-background text-brand-muted border border-brand-border">
                       <Lock className="w-3 h-3 mr-1" />
                       Locked
                     </span>
-                  )}
-                  {priceConfig && !unlocked && !isComingSoon && (
-                    <span className="text-xs text-brand-muted">one-time</span>
                   )}
                 </div>
               </div>
@@ -434,22 +436,13 @@ export default function PacksPage() {
             </>
           ) : (
             <div>
-              {priceConfig ? (
-                <Button 
-                  className="w-full mb-2" 
-                  onClick={() => handleUnlock(priceConfig.priceId)}
-                >
-                  Unlock This Pack
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : (
-                <Button 
-                  className="w-full mb-2" 
-                  disabled
-                >
-                  Not Available
-                </Button>
-              )}
+              <Button 
+                className="w-full mb-2" 
+                onClick={() => handleUnlock(pack.id)}
+              >
+                Unlock This Pack
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
               <p className="text-xs text-center text-brand-muted/80">
                 One-time unlock • Lifetime access
               </p>
@@ -496,83 +489,9 @@ export default function PacksPage() {
             <p className="text-brand-muted">Loading buying strategies...</p>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              {sortedPacks.map(renderPackCard)}
-            </div>
-            
-            {/* Bundle Option */}
-            {!isUnlocked('first_time') || !isUnlocked('in_person') ? (
-              <Card className="p-8 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <Sparkles className="w-6 h-6 text-accent-hover" />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-semibold text-brand-ink mb-1">
-                          Bundle (Both Packs)
-                        </h3>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent-hover border border-accent/30">
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          Best Value
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-lg font-semibold text-brand-ink mb-2">
-                      {formatPrice(STRIPE_PRICES.BUNDLE.amount)} one-time
-                      {getBundleSavings() > 0 && (
-                        <span className="ml-2 text-sm font-normal text-accent-hover">
-                          (Save {formatPrice(getBundleSavings())})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-brand-muted mb-4">
-                      Get both the First-Time Buyer Pack and In-Person Negotiation Pack together at a discounted price.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="bg-white/50 border border-brand-border rounded-lg p-4 mb-6">
-                  <p className="text-sm font-semibold text-brand-ink mb-2">Includes:</p>
-                  <ul className="space-y-1.5">
-                    <li className="flex items-start space-x-2 text-sm text-brand-ink">
-                      <span className="text-accent mt-0.5">✓</span>
-                      <span>First-Time Buyer Pack ({formatPrice(STRIPE_PRICES.FIRST_TIME.amount)})</span>
-                    </li>
-                    <li className="flex items-start space-x-2 text-sm text-brand-ink">
-                      <span className="text-accent mt-0.5">✓</span>
-                      <span>In-Person Negotiation Pack ({formatPrice(STRIPE_PRICES.IN_PERSON.amount)})</span>
-                    </li>
-                    <li className="flex items-start space-x-2 text-sm font-semibold text-accent-hover pt-2 border-t border-brand-border">
-                      <span className="mt-0.5">→</span>
-                      <span>Total value: {formatPrice(STRIPE_PRICES.FIRST_TIME.amount + STRIPE_PRICES.IN_PERSON.amount)}</span>
-                    </li>
-                  </ul>
-                </div>
-                
-                <Button 
-                  className="w-full" 
-                  onClick={() => {
-                    if (!STRIPE_PRICES.BUNDLE.priceId) {
-                      console.error('Bundle price ID not configured')
-                      alert('Bundle pricing is not configured. Please contact support.')
-                      return
-                    }
-                    handleUnlock(STRIPE_PRICES.BUNDLE.priceId)
-                  }}
-                  disabled={!STRIPE_PRICES.BUNDLE.priceId}
-                >
-                  Unlock Bundle
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-                <p className="text-xs text-center text-brand-muted/80 mt-2">
-                  One-time unlock • Lifetime access to both packs
-                </p>
-              </Card>
-            ) : null}
-          </>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {sortedPacks.map(renderPackCard)}
+          </div>
         )}
       </div>
     </div>
