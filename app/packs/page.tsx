@@ -7,6 +7,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
 
 const supabase = createBrowserSupabaseClient()
 import { useAuth } from '@/contexts/AuthContext'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { packs as packConfigs } from '@/lib/packs/config'
@@ -38,9 +39,17 @@ interface PacksResponse {
   selectedPackId: string | null
 }
 
+// Pack prices (in USD)
+const PACK_PRICES: Record<string, number> = {
+  first_time: 15,
+  in_person: 10,
+  bundle: 22,
+}
+
 export default function PacksPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const { loading: entitlementsLoading, hasFirstTime, hasInPerson, hasBundle } = useEntitlements()
   const [loading, setLoading] = useState(true)
   const [userPacks, setUserPacks] = useState<PackStatus[]>([])
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null)
@@ -53,9 +62,8 @@ export default function PacksPage() {
     const checkoutStatus = params.get('checkout')
     if (checkoutStatus === 'success') {
       // Refresh packs to show newly unlocked pack
-      fetchPacks(false)
-      // Clean up URL
-      window.history.replaceState({}, '', '/packs')
+      // Reload page to refresh entitlements
+      window.location.reload()
     } else if (checkoutStatus === 'cancel') {
       // Clean up URL
       window.history.replaceState({}, '', '/packs')
@@ -95,8 +103,19 @@ export default function PacksPage() {
     }
   }
 
-  const isUnlocked = (packId: string) =>
-    userPacks.some((p) => p.packId === packId && p.isUnlocked)
+  const isUnlocked = (packId: string): boolean => {
+    // Use entitlements from Supabase
+    if (packId === 'first_time') {
+      return hasFirstTime
+    } else if (packId === 'in_person') {
+      return hasInPerson
+    } else if (packId === 'bundle' || packId === 'bundle_both') {
+      // Bundle is unlocked if bundle flag is true OR both packs are unlocked
+      return hasBundle || (hasFirstTime && hasInPerson)
+    }
+    // Fallback to old system for other packs
+    return userPacks.some((p) => p.packId === packId && p.isUnlocked)
+  }
 
   const [error, setError] = useState<string | null>(null)
   
@@ -133,10 +152,7 @@ export default function PacksPage() {
   const handleUnlock = async (packId: string) => {
     // Check if user is authenticated first
     if (!user) {
-      const shouldSignIn = confirm('You need to sign in or sign up to unlock packs and access enhanced features.\n\nWould you like to sign in now?')
-      if (shouldSignIn) {
-        router.push('/login')
-      }
+      router.push('/login?message=Please sign in to unlock packs')
       return
     }
 
@@ -145,7 +161,8 @@ export default function PacksPage() {
       const productKeyMap: Record<string, 'first_time' | 'in_person' | 'bundle_both'> = {
         first_time: 'first_time',
         in_person: 'in_person',
-        // Add bundle_both if needed
+        bundle: 'bundle_both',
+        bundle_both: 'bundle_both',
       }
 
       const productKey = productKeyMap[packId]
@@ -367,6 +384,12 @@ export default function PacksPage() {
             </div>
           ) : unlocked ? (
             <>
+              <div className="mb-3 text-center">
+                <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-accent/10 text-accent-hover text-sm font-medium mb-3">
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  You have access
+                </div>
+              </div>
               <Button
                 className="w-full mb-3"
                 variant={selected ? 'secondary' : 'primary'}
@@ -436,16 +459,31 @@ export default function PacksPage() {
             </>
           ) : (
             <div>
-              <Button 
-                className="w-full mb-2" 
-                onClick={() => handleUnlock(pack.id)}
-              >
-                Unlock This Pack
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <p className="text-xs text-center text-brand-muted/80">
-                One-time unlock • Lifetime access
-              </p>
+              {/* Price Display */}
+              <div className="mb-4">
+                <div className="flex items-baseline justify-center space-x-1 mb-3">
+                  <span className="text-2xl font-bold text-brand-ink">
+                    ${PACK_PRICES[pack.id] || '—'}
+                  </span>
+                  {PACK_PRICES[pack.id] === PACK_PRICES['bundle'] && (
+                    <span className="text-sm text-brand-muted line-through">
+                      ${(PACK_PRICES['first_time'] || 0) + (PACK_PRICES['in_person'] || 0)}
+                    </span>
+                  )}
+                </div>
+                <Button 
+                  className="w-full mb-2" 
+                  variant="primary"
+                  onClick={() => handleUnlock(pack.id)}
+                  disabled={loading || entitlementsLoading}
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Unlock This Pack
+                </Button>
+                <p className="text-xs text-center text-brand-muted/80">
+                  One-time unlock • Lifetime access
+                </p>
+              </div>
             </div>
           )}
         </div>

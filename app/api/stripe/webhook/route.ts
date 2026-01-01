@@ -78,105 +78,90 @@ export async function POST(request: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session
 
     try {
-      // Extract metadata
-      const userId = session.metadata?.user_id
-      const productKey = session.metadata?.product_key
+      // Extract user_id from client_reference_id OR metadata.user_id
+      const userId = session.client_reference_id || session.metadata?.user_id
+      const packKey = session.metadata?.pack_key
       const sessionId = session.id
 
-      if (!userId || !productKey || !sessionId) {
-        console.error('[Webhook] Missing required metadata:', { userId, productKey, sessionId })
+      if (!userId) {
+        console.error('[Webhook] Missing user_id in client_reference_id and metadata:', { sessionId })
         return NextResponse.json(
-          { error: 'Missing required metadata' },
+          { error: 'Missing user_id' },
           { status: 400 }
         )
       }
 
-      console.log(`[Webhook] Processing checkout.session.completed for user ${userId}, product ${productKey}, session ${sessionId}`)
+      // Determine purchased pack from line items or metadata
+      let purchasedPackKey: string | null = packKey || null
+
+      // If pack_key not in metadata, fetch line items to determine price
+      if (!purchasedPackKey && session.line_items) {
+        const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 1 })
+        if (lineItems.data.length > 0) {
+          const priceId = lineItems.data[0].price?.id
+          
+          // Map price ID to pack key
+          const priceToPackMap: Record<string, string> = {
+            [process.env.STRIPE_PRICE_FIRST_TIME || '']: 'first_time',
+            [process.env.STRIPE_PRICE_IN_PERSON || '']: 'in_person',
+            [process.env.STRIPE_PRICE_BUNDLE || '']: 'bundle',
+          }
+          
+          purchasedPackKey = priceId ? priceToPackMap[priceId] || null : null
+        }
+      }
+
+      if (!purchasedPackKey) {
+        console.error('[Webhook] Could not determine purchased pack:', { sessionId, userId })
+        return NextResponse.json(
+          { error: 'Could not determine purchased pack' },
+          { status: 400 }
+        )
+      }
+
+      console.log(`[Webhook] Processing checkout.session.completed for user ${userId}, pack ${purchasedPackKey}, session ${sessionId}`)
 
       // Create Supabase admin client
       const supabase = getSupabaseAdmin()
 
-      // Handle bundle_both: insert TWO rows (first_time and in_person)
-      if (productKey === 'bundle_both') {
-        const entitlementsToInsert = [
-          {
-            user_id: userId,
-            product_key: 'first_time',
-            stripe_checkout_session_id: sessionId,
-            status: 'active',
-          },
-          {
-            user_id: userId,
-            product_key: 'in_person',
-            stripe_checkout_session_id: sessionId,
-            status: 'active',
-          },
-        ]
+      // Map pack_key to entitlement flags
+      let firstTime = false
+      let inPerson = false
+      let bundle = false
 
-        // Insert both entitlements
-        // Handle idempotency: if entitlement already exists, treat as success
-        for (const entitlement of entitlementsToInsert) {
-          try {
-            const { error: insertError } = await supabase
-              .from('entitlements')
-              .insert(entitlement)
-
-            if (insertError) {
-              // If it's a unique constraint violation, treat as success (idempotent)
-              if (insertError.code === '23505') {
-                console.log(`[Webhook] Entitlement already exists for session ${sessionId}, product ${entitlement.product_key} - treating as success`)
-              } else {
-                throw insertError
-              }
-            } else {
-              console.log(`[Webhook] Created entitlement for user ${userId}, product ${entitlement.product_key}`)
-            }
-          } catch (err: any) {
-            // Handle unique constraint violation as success (idempotent)
-            if (err.code === '23505') {
-              console.log(`[Webhook] Entitlement already exists for session ${sessionId}, product ${entitlement.product_key} - treating as success`)
-            } else {
-              console.error(`[Webhook] Error inserting entitlement for ${entitlement.product_key}:`, err)
-              throw err
-            }
-          }
-        }
-      } else {
-        // Insert single entitlement
-        const entitlement = {
-          user_id: userId,
-          product_key: productKey,
-          stripe_checkout_session_id: sessionId,
-          status: 'active',
-        }
-
-        try {
-          const { error: insertError } = await supabase
-            .from('entitlements')
-            .insert(entitlement)
-
-          if (insertError) {
-            // If it's a unique constraint violation, treat as success (idempotent)
-            if (insertError.code === '23505') {
-              console.log(`[Webhook] Entitlement already exists for session ${sessionId}, product ${productKey} - treating as success`)
-            } else {
-              throw insertError
-            }
-          } else {
-            console.log(`[Webhook] Created entitlement for user ${userId}, product ${productKey}`)
-          }
-        } catch (err: any) {
-          // Handle unique constraint violation as success (idempotent)
-          if (err.code === '23505') {
-            console.log(`[Webhook] Entitlement already exists for session ${sessionId}, product ${productKey} - treating as success`)
-          } else {
-            console.error('[Webhook] Error inserting entitlement:', err)
-            throw err
-          }
-        }
+      if (purchasedPackKey === 'first_time') {
+        firstTime = true
+      } else if (purchasedPackKey === 'in_person') {
+        inPerson = true
+      } else if (purchasedPackKey === 'bundle' || purchasedPackKey === 'bundle_both') {
+        // Bundle unlocks both packs
+        bundle = true
+        firstTime = true
+        inPerson = true
       }
 
-      console.log(`[Webhook] Successfully processed checkout.session.completed for session ${sessionId}`)
+      // Upsert entitlements (set flags true, keep existing trues)
+      const { error: upsertError } = await supabase
+        .from('user_entitlements')
+        .upsert(
+          {
+            user_id: userId,
+            first_time: firstTime,
+            in_person: inPerson,
+            bundle: bundle,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'user_id',
+          }
+        )
+
+      if (upsertError) {
+        console.error('[Webhook] Error upserting entitlements:', upsertError)
+        throw upsertError
+      }
+
+      console.log(`[Webhook] Successfully updated entitlements for user ${userId}: first_time=${firstTime}, in_person=${inPerson}, bundle=${bundle}`)
       return NextResponse.json({ received: true })
     } catch (error: any) {
       console.error('[Webhook] Error processing checkout.session.completed:', error)

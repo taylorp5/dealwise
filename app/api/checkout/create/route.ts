@@ -133,11 +133,12 @@ export async function POST(request: NextRequest) {
             quantity: 1,
           },
         ],
+        client_reference_id: userId, // User ID for webhook lookup
         success_url: `${baseUrl}/packs?checkout=success`,
         cancel_url: `${baseUrl}/packs?checkout=cancel`,
         metadata: {
           user_id: userId,
-          product_key: product_key,
+          pack_key: product_key, // Store as pack_key for clarity
         },
       })
     } catch (stripeError: any) {
