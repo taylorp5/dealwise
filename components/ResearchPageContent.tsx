@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import DealPlanDisplay from '@/components/DealPlanDisplay'
 import ListingReviewStep from '@/components/ListingReviewStep'
 import type { AnalyzeListingResponse, CompareOffersResponse } from '@/lib/types/api'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import { usePackEntitlements } from '@/hooks/usePackEntitlements'
 
 interface Offer {
@@ -36,8 +36,7 @@ export default function ResearchPageContent(props?: ResearchPageContentProps) {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { ownedPacks } = usePackEntitlements()
-  const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
+  const { hasFirstTime } = useEntitlements()
   
   // Determine variant from mode prop or default to free
   const variant: 'free' | 'first_time' | 'in_person' = 

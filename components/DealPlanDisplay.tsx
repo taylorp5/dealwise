@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import PackGate from '@/components/PackGate'
 import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
-import { usePackEntitlements } from '@/hooks/usePackEntitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import { getTaxRateForState } from '@/lib/utils/tax-rates'
 import type { DealPlan } from '@/lib/types/api'
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
@@ -1445,7 +1445,6 @@ function InteractiveGoodDealQuestions({
 
 export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToComparison, diagnostics, variant = 'free' }: DealPlanDisplayProps) {
   const router = useRouter()
-  const { ownedPacks } = usePackEntitlements()
   
   // Variant is now passed as prop from route, not from localStorage
   // Default to 'free' if not provided
@@ -1562,15 +1561,13 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
     
     // Determine pack ID from variant prop
     const selectedPackId = variant === 'first_time' ? 'first_time' : variant === 'in_person' ? 'in_person' : null
-    const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
-    const hasInPersonPack = hasPack('in_person') || hasAllAccess()
     
     // Use pack context (selected pack) instead of auto-prioritizing by ownership
     // This ensures the route matches the pack context the user is viewing
     const copilotRoute = getCopilotRouteFromContext(
       selectedPackId,
-      hasInPersonPack,
-      hasFirstTimePack
+      hasInPerson,
+      hasFirstTime
     )
     
     // Extract mode from route for localStorage keys
@@ -1648,11 +1645,10 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
     router.push('/research?tab=compare')
   }
 
-  // Pack checks
-  const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
+  // Pack checks - use server-side entitlements
+  const { hasFirstTime, hasInPerson } = useEntitlements()
   const hasCashPack = hasPack('cash') || hasAllAccess()
   const hasFinancingPack = hasPack('financing') || hasAllAccess()
-  const hasInPersonPack = hasPack('in_person') || hasAllAccess()
 
   return (
     <div className="mt-6 space-y-6">
@@ -1661,7 +1657,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
         <p className="text-gray-600 mb-6">Your complete negotiation strategy for this listing</p>
 
         {/* In-Person Enhanced Analyzer: Dealer Leverage Snapshot */}
-        {variant === 'in_person' && hasInPersonPack && (
+        {variant === 'in_person' && hasInPerson && (
           <Card className="p-6 mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300 shadow-lg">
             <div className="flex items-center gap-2 mb-4">
               <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2027,7 +2023,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
 
         {/* 3.5. First-Time Buyer Pack: Hidden Costs & Price Exclusions */}
         {/* Only show for First-Time variant, not In-Person */}
-        {variant === 'first_time' && hasFirstTimePack && (
+        {variant === 'first_time' && hasFirstTime && (
           <>
           <Card className="p-6 mb-6 bg-yellow-50 border-yellow-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -2681,7 +2677,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
 
         {/* In-Person Negotiation Pack: What You Can Say In Person */}
         {/* Only show for In-Person pack variant */}
-        {variant === 'in_person' && hasInPersonPack && (
+        {variant === 'in_person' && hasInPerson && (
           <Card className="p-6 mb-6 bg-orange-50 border-orange-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               What You Can Say In Person
