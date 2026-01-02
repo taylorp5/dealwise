@@ -33,7 +33,7 @@ export default function AppHeader() {
   const navLinks = [
     { href: '/copilot/free', label: 'Negotiation Draft Builder', icon: null },
     { href: '/research', label: 'Analyzer', icon: null },
-    { href: '/calculator', label: 'OTD Builder', icon: null },
+    { href: '/calculator/free', label: 'OTD Builder', icon: null },
     { href: '/packs', label: 'Packs', icon: null },
   ]
 

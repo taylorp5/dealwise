@@ -4,6 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { buildInPersonAdvisorSystemPrompt, buildInPersonAdvisorUserPrompt } from '@/lib/prompts/in_person_advisor'
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY is not set')
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })

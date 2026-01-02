@@ -1636,7 +1636,13 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
       console.warn('OTD Builder: No tax rate found')
     }
     
-    router.push('/calculator')
+    // Determine calculator route based on variant
+    const calculatorRoute = variant === 'first_time' 
+      ? '/calculator/first-time'
+      : variant === 'in_person'
+      ? '/calculator/in-person'
+      : '/calculator/free'
+    router.push(calculatorRoute)
   }
 
   const handleOpenComparison = () => {

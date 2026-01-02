@@ -55,7 +55,7 @@ export default function Home() {
       icon: Receipt,
       title: 'Smart OTD Builder',
       description: 'Model your out-the-door price using smart defaults and your real inputs.',
-      href: '/calculator',
+      href: '/calculator/free',
       badge: 'Recommended',
       badgeColor: 'emerald' as const,
       isRecommended: true,

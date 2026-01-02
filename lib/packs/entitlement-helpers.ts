@@ -64,6 +64,24 @@ export function getAnalyzerRouteFromEntitlements(): string {
   return '/analyzer/free'
 }
 
+/**
+ * Get the correct calculator route for a given pack ID
+ * Single source of truth for calculator route mapping
+ */
+export function getCalculatorRouteForPack(packId: string | null | undefined): string {
+  if (!packId) return '/calculator/free'
+  
+  switch (packId) {
+    case 'first_time':
+      return '/calculator/first-time'
+    case 'in_person':
+      return '/calculator/in-person'
+    case 'free':
+    default:
+      return '/calculator/free'
+  }
+}
+
 
 
 

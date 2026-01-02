@@ -23,7 +23,7 @@ export default function Navbar() {
                 Listing Analyzer
               </Link>
               <Link
-                href="/calculator"
+                href="/calculator/free"
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
               >
                 Smart OTD Builder

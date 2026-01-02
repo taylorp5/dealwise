@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY is not set')
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
@@ -304,7 +308,7 @@ function getFeatureInfo(redirectTo?: string): { name: string; route: string; des
     case 'otd_builder':
       return {
         name: 'Smart OTD Builder',
-        route: '/calculator',
+        route: '/calculator/free',
         description: 'builds detailed out-the-door price calculations with all fees, taxes, and add-ons',
       }
     case 'copilot':

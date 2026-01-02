@@ -29,8 +29,45 @@ export default function CalculatorPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { ownedPacks } = usePackEntitlements()
-  const hasInPersonPack = hasPack('in_person') || hasAllAccess()
-  const hasFirstTimePack = hasPack('first_time') || hasAllAccess()
+  
+  // Determine pack variant from localStorage (set by route) - read synchronously on first render
+  const getInitialPackVariant = (): 'free' | 'first_time' | 'in_person' => {
+    if (typeof window !== 'undefined') {
+      const selectedPackId = localStorage.getItem('selected_pack_id')
+      if (selectedPackId === 'first_time' || selectedPackId === 'in_person' || selectedPackId === 'free') {
+        return selectedPackId
+      }
+    }
+    return 'free'
+  }
+  
+  const [packVariant, setPackVariant] = useState<'free' | 'first_time' | 'in_person'>(getInitialPackVariant())
+  
+  // Update pack variant from localStorage on mount and handle redirect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const selectedPackId = localStorage.getItem('selected_pack_id')
+      if (selectedPackId === 'first_time' || selectedPackId === 'in_person' || selectedPackId === 'free') {
+        setPackVariant(selectedPackId)
+      } else {
+        // Default to free if not set, and redirect to /calculator/free
+        setPackVariant('free')
+        localStorage.setItem('selected_pack_id', 'free')
+        // Redirect old /calculator route to /calculator/free
+        if (window.location.pathname === '/calculator') {
+          router.replace('/calculator/free')
+        }
+      }
+    }
+  }, [router])
+  
+  // Check entitlements and apply pack variant
+  const hasInPersonEntitlement = hasPack('in_person') || hasAllAccess()
+  const hasFirstTimeEntitlement = hasPack('first_time') || hasAllAccess()
+  
+  // Only show pack-specific UI if user has entitlement AND variant matches
+  const hasInPersonPack = hasInPersonEntitlement && packVariant === 'in_person'
+  const hasFirstTimePack = hasFirstTimeEntitlement && packVariant === 'first_time'
   
   const [currentStep, setCurrentStep] = useState<Step>('basics')
   
