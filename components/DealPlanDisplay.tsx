@@ -1653,8 +1653,143 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   return (
     <div className="mt-6 space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Deal Plan</h2>
-        <p className="text-gray-600 mb-6">Your complete negotiation strategy for this listing</p>
+        {variant === 'first_time' ? (
+          <>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Deal Readiness Assessment</h2>
+            <p className="text-gray-600 mb-4">Expert review before you contact the dealer.</p>
+            
+            {/* Verdict Banner - First-Time Buyer Only */}
+            {(() => {
+              const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
+              const hasFeeBreakdown = dealPlan.otdEstimate?.assumptions?.docFee?.value !== undefined
+              const priceDiff = dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice
+              const priceDiffPercent = (priceDiff / dealPlan.targets.estimatedFairPrice) * 100
+              const hasDealerRedFlags = dealPlan.leverage.points.some(p => p.strength === 'low' && p.score < 30)
+              const hasTaxValidationWarning = dealPlan.otdEstimate?.assumptions?.taxRate?.confidence !== 'high'
+              const hasMissingKeyInfo = !hasOTD || !hasFeeBreakdown
+              
+              // Determine verdict state based on existing signals
+              let verdict: 'ready' | 'caution' | 'not-ready' = 'ready'
+              
+              // Critical issues → Not Ready
+              if (!hasOTD || priceDiffPercent > 20) {
+                verdict = 'not-ready'
+              }
+              // Warnings → Caution
+              else if (!hasFeeBreakdown || hasTaxValidationWarning || priceDiffPercent > 10 || hasDealerRedFlags) {
+                verdict = 'caution'
+              }
+              // Otherwise → Ready
+              
+              const verdictConfig = {
+                ready: {
+                  icon: '✅',
+                  title: 'Ready to proceed (in writing)',
+                  bgColor: 'bg-green-50',
+                  borderColor: 'border-green-300',
+                  textColor: 'text-green-900',
+                  iconColor: 'text-green-600',
+                },
+                caution: {
+                  icon: '⚠️',
+                  title: 'Proceed with caution',
+                  bgColor: 'bg-amber-50',
+                  borderColor: 'border-amber-300',
+                  textColor: 'text-amber-900',
+                  iconColor: 'text-amber-600',
+                },
+                'not-ready': {
+                  icon: '❌',
+                  title: 'Not ready — missing critical info',
+                  bgColor: 'bg-red-50',
+                  borderColor: 'border-red-300',
+                  textColor: 'text-red-900',
+                  iconColor: 'text-red-600',
+                },
+              }
+              
+              const config = verdictConfig[verdict]
+              
+              return (
+                <div className={`${config.bgColor} ${config.borderColor} border-2 rounded-lg p-4 mb-6 shadow-sm`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-2xl ${config.iconColor}`}>{config.icon}</span>
+                    <h3 className={`text-lg font-bold ${config.textColor}`}>
+                      {config.title}
+                    </h3>
+                  </div>
+                </div>
+              )
+            })()}
+            
+            {/* Written-Only Templates - First-Time Buyer Only */}
+            <Card className="p-6 mb-6 bg-blue-50 border-blue-200" data-templates-section>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                If you proceed, send this (written only)
+              </h3>
+              <div className="space-y-4">
+                {/* Template 1: Safe opener (OTD request) */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Request written OTD breakdown</p>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap mb-3">
+                      Hi — I'm interested in this vehicle. Before discussing next steps, can you email me the full out-the-door price breakdown including sale price, taxes, doc fee, title/registration, and any add-ons? I want to review the complete OTD in writing.
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleCopyScript("Hi — I'm interested in this vehicle. Before discussing next steps, can you email me the full out-the-door price breakdown including sale price, taxes, doc fee, title/registration, and any add-ons? I want to review the complete OTD in writing.")
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Template 2: Clarify add-ons */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Clarify add-ons (optional vs mandatory)</p>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap mb-3">
+                      Thanks. Can you confirm which line items are optional vs required by law? If any add-ons are dealer policy, please itemize them and send an updated out-the-door breakdown in writing without optional items so I can compare.
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleCopyScript("Thanks. Can you confirm which line items are optional vs required by law? If any add-ons are dealer policy, please itemize them and send an updated out-the-door breakdown in writing without optional items so I can compare.")
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Template 3: Polite pause */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Pause to review</p>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap mb-3">
+                      Appreciate it — I'm going to review the written out-the-door breakdown and compare options. I'll follow up once I've looked everything over.
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleCopyScript("Appreciate it — I'm going to review the written out-the-door breakdown and compare options. I'll follow up once I've looked everything over.")
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Deal Plan</h2>
+            <p className="text-gray-600 mb-6">Your complete negotiation strategy for this listing</p>
+          </>
+        )}
 
         {/* In-Person Enhanced Analyzer: Dealer Leverage Snapshot */}
         {variant === 'in_person' && hasInPerson && (
@@ -2615,7 +2750,11 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                 nextSteps.push('Review the checklist above and gather missing information')
               }
               
-              nextSteps.push('Use the Negotiation Copilot to craft your first message')
+              if (variant === 'first_time') {
+                nextSteps.push('Use the written-only templates above to request a written OTD breakdown.')
+              } else {
+                nextSteps.push('Use the Negotiation Copilot to craft your first message')
+              }
               
               return (
                 <div>
@@ -2927,7 +3066,9 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                       ${calculatedDesiredOTD.toLocaleString()}
                     </span>
                     <span className="text-xs text-gray-500">
-                      (This will be used when opening Copilot)
+                      {variant === 'first_time' 
+                        ? '(Saved for your reference)' 
+                        : '(This will be used when opening Copilot)'}
                     </span>
                   </div>
                 )}
@@ -2959,7 +3100,9 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                 </Button>
               </div>
               <p className="text-xs text-gray-600 mt-2">
-                This OTD includes vehicle price, tax, and all fees. It will be used when you open Copilot.
+                {variant === 'first_time'
+                  ? 'This OTD includes vehicle price, tax, and all fees. Use this as your target when requesting a written breakdown.'
+                  : 'This OTD includes vehicle price, tax, and all fees. It will be used when you open Copilot.'}
               </p>
             </div>
           )}
@@ -2969,12 +3112,25 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
         <Card className="p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
           <h3 className="text-lg font-semibold mb-4">6. Next Best Move</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Button
-              onClick={() => handleOpenCopilot()}
-              className="bg-white !text-black hover:bg-gray-100"
-            >
-              Generate Best Reply in Copilot
-            </Button>
+            {variant === 'first_time' ? (
+              <Button
+                onClick={() => {
+                  // Scroll to the written templates section
+                  const templatesSection = document.querySelector('[data-templates-section]')
+                  templatesSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Use the safe written templates above
+              </Button>
+            ) : (
+              <Button
+                onClick={() => handleOpenCopilot()}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Generate Best Reply in Copilot
+              </Button>
+            )}
             <Button
               onClick={handleOpenOTDBuilder}
               className="bg-white !text-black hover:bg-gray-100"
