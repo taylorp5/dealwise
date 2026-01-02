@@ -34,6 +34,18 @@ export default function CalculatorPage() {
   const getInitialPackVariant = (): 'free' | 'first_time' | 'in_person' => {
     if (typeof window !== 'undefined') {
       const selectedPackId = localStorage.getItem('selected_pack_id')
+      
+      // Dev-only logging (not in production)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Calculator] Initial pack variant detection:', {
+          path: window.location.pathname,
+          selected_pack_id: selectedPackId,
+          resolved_variant: selectedPackId === 'first_time' || selectedPackId === 'in_person' || selectedPackId === 'free' 
+            ? selectedPackId 
+            : 'free (default)',
+        })
+      }
+      
       if (selectedPackId === 'first_time' || selectedPackId === 'in_person' || selectedPackId === 'free') {
         return selectedPackId
       }
@@ -47,6 +59,18 @@ export default function CalculatorPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const selectedPackId = localStorage.getItem('selected_pack_id')
+      
+      // Dev-only logging (not in production)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Calculator] Pack variant detection:', {
+          path: window.location.pathname,
+          selected_pack_id: selectedPackId,
+          resolved_variant: selectedPackId === 'first_time' || selectedPackId === 'in_person' || selectedPackId === 'free' 
+            ? selectedPackId 
+            : 'free (default)',
+        })
+      }
+      
       if (selectedPackId === 'first_time' || selectedPackId === 'in_person' || selectedPackId === 'free') {
         setPackVariant(selectedPackId)
       } else {
