@@ -57,13 +57,14 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
     }
   }, [packVariant, initialVariant])
   
-  // Check entitlements and apply pack variant
+  // Check entitlements for route guarding (not UI rendering)
   const hasInPersonEntitlement = hasPack('in_person') || hasAllAccess()
   const hasFirstTimeEntitlement = hasPack('first_time') || hasAllAccess()
   
-  // Only show pack-specific UI if user has entitlement AND variant matches
-  const hasInPersonPack = hasInPersonEntitlement && packVariant === 'in_person'
-  const hasFirstTimePack = hasFirstTimeEntitlement && packVariant === 'first_time'
+  // UI rendering is based on packVariant alone (route-based)
+  // Entitlements are checked separately for route access control
+  const isFirstTimeVariant = packVariant === 'first_time'
+  const isInPersonVariant = packVariant === 'in_person'
   
   const [currentStep, setCurrentStep] = useState<Step>('basics')
   
@@ -135,7 +136,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
 
   // Load In-Person pack values from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && hasInPersonPack) {
+    if (typeof window !== 'undefined' && isInPersonVariant) {
       const savedDealerOTD = localStorage.getItem('in_person_dealer_current_otd')
       const savedTargetOTD = localStorage.getItem('in_person_target_otd')
       const savedWalkAway = localStorage.getItem('in_person_walkaway_ceiling')
@@ -154,11 +155,11 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
         } catch (e) { /* ignore */ }
       }
     }
-  }, [hasInPersonPack, targetOTD, walkAwayCeiling])
+  }, [isInPersonVariant, targetOTD, walkAwayCeiling])
 
   // Save In-Person pack values to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && hasInPersonPack) {
+    if (typeof window !== 'undefined' && isInPersonVariant) {
       if (dealerCurrentOTD) {
         localStorage.setItem('in_person_dealer_current_otd', dealerCurrentOTD)
       } else {
@@ -193,26 +194,26 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
         localStorage.removeItem('in_person_walkaway_ceiling')
       }
     }
-  }, [dealerCurrentOTD, targetOTD, walkAwayCeiling, hasInPersonPack])
+  }, [dealerCurrentOTD, targetOTD, walkAwayCeiling, isInPersonVariant])
 
   // Load FTB pack values from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && hasFirstTimePack) {
+    if (typeof window !== 'undefined' && isFirstTimeVariant) {
       const savedDealerQuotedOTD = localStorage.getItem('first_time_dealer_quoted_otd')
       if (savedDealerQuotedOTD) setDealerQuotedOTD(savedDealerQuotedOTD)
     }
-  }, [hasFirstTimePack])
+  }, [isFirstTimeVariant])
 
   // Save FTB pack values to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && hasFirstTimePack) {
+    if (typeof window !== 'undefined' && isFirstTimeVariant) {
       if (dealerQuotedOTD) {
         localStorage.setItem('first_time_dealer_quoted_otd', dealerQuotedOTD)
       } else {
         localStorage.removeItem('first_time_dealer_quoted_otd')
       }
     }
-  }, [dealerQuotedOTD, hasFirstTimePack])
+  }, [dealerQuotedOTD, isFirstTimeVariant])
 
   // Auto-lookup tax rate when state changes
   useEffect(() => {
@@ -412,7 +413,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {hasFirstTimePack ? 'Step 1: Verify Your Location & Price' : 'Step 1: Basics'}
+              {isFirstTimeVariant ? 'Step 1: Verify Your Location & Price' : 'Step 1: Basics'}
             </button>
             <button
               onClick={() => setCurrentStep('fees')}
@@ -422,7 +423,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {hasFirstTimePack ? 'Step 2: Common Fees to Expect' : 'Step 2: Fees'}
+              {isFirstTimeVariant ? 'Step 2: Common Fees to Expect' : 'Step 2: Fees'}
             </button>
             <button
               onClick={() => setCurrentStep('addons')}
@@ -432,7 +433,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {hasFirstTimePack ? 'Step 3: Identify Optional Add-Ons' : 'Step 3: Add-on Detector'}
+              {isFirstTimeVariant ? 'Step 3: Identify Optional Add-Ons' : 'Step 3: Add-on Detector'}
             </button>
             <button
               onClick={() => currentStep === 'results' && setCurrentStep('results')}
@@ -443,7 +444,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
               }`}
               disabled={currentStep !== 'results'}
             >
-              {hasFirstTimePack ? 'OTD Reality Check' : 'Your OTD Estimate'}
+              {isFirstTimeVariant ? 'OTD Reality Check' : 'Your OTD Estimate'}
             </button>
           </div>
 
@@ -451,7 +452,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
           {currentStep === 'basics' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {hasFirstTimePack ? 'Step 1: Verify Your Location & Price' : 'Step 1: Basics'}
+                {isFirstTimeVariant ? 'Step 1: Verify Your Location & Price' : 'Step 1: Basics'}
               </h2>
 
               <div className="space-y-4">
@@ -507,7 +508,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tax Rate (%)
-                    {!hasFirstTimePack && !taxRateOverride && (
+                    {!isFirstTimeVariant && !taxRateOverride && (
                       <button
                         type="button"
                         onClick={() => setTaxRateOverride(true)}
@@ -523,8 +524,8 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                     onChange={(e) => setTaxRate(e.target.value)}
                     placeholder="7.5"
                     step="0.01"
-                    disabled={taxRateLoading || hasFirstTimePack}
-                    readOnly={hasFirstTimePack}
+                    disabled={taxRateLoading || isFirstTimeVariant}
+                    readOnly={isFirstTimeVariant}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   />
                   {taxRateResult && (
@@ -532,7 +533,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                       {taxRateResult.source === 'zip_lookup'
                         ? `Looked up: ${taxRateResult.combinedRate || taxRateResult.stateBaseRate}%`
                         : `Estimated: ${taxRateResult.combinedRate || taxRateResult.stateBaseRate}%`}
-                      {!hasFirstTimePack && ' Click "Override" to manually adjust.'}
+                      {!isFirstTimeVariant && ' Click "Override" to manually adjust.'}
                     </p>
                   )}
                 </div>
@@ -548,10 +549,10 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
           {currentStep === 'fees' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {hasFirstTimePack ? 'Step 2: Common Fees to Expect' : 'Step 2: Fees'}
+                {isFirstTimeVariant ? 'Step 2: Common Fees to Expect' : 'Step 2: Fees'}
               </h2>
 
-              {hasFirstTimePack && (
+              {isFirstTimeVariant && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-4">
                   <strong>💡 Guardrail:</strong> If the dealer hasn't provided a fee in writing, don't assume it applies. Ask for an itemized OTD worksheet.
                 </div>
@@ -597,7 +598,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                   />
                 </div>
 
-                {!hasFirstTimePack || showOtherDealerFees ? (
+                {!isFirstTimeVariant || showOtherDealerFees ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Other Dealer Fees (optional)
@@ -627,7 +628,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                   </div>
                 )}
 
-                {!hasFirstTimePack || showCustomFees ? (
+                {!isFirstTimeVariant || showCustomFees ? (
                   <div className="border-t border-gray-200 pt-4">
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Custom Fees (from dealer worksheet)</h3>
                     {customFees.map((fee) => (
@@ -719,10 +720,10 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
           {currentStep === 'addons' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {hasFirstTimePack ? 'Step 3: Identify Optional Add-Ons' : 'Step 3: Add-on Detector'}
+                {isFirstTimeVariant ? 'Step 3: Identify Optional Add-Ons' : 'Step 3: Add-on Detector'}
               </h2>
 
-              {hasFirstTimePack && (
+              {isFirstTimeVariant && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-4">
                   <strong>💡 Guardrail:</strong> Most add-ons are optional. Paste the worksheet line items to identify what can be removed before agreeing to OTD.
                 </div>
@@ -784,7 +785,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                               )}
                             </div>
                           </div>
-                          {addon.classification === 'inflated' && hasInPersonPack && (
+                          {addon.classification === 'inflated' && isInPersonVariant && (
                             <p className="text-xs text-red-700 mt-2">
                               Consider negotiating removal or significant reduction.
                             </p>
@@ -809,7 +810,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
           {currentStep === 'results' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {hasFirstTimePack ? 'OTD Reality Check' : 'Your OTD Estimate'}
+                {isFirstTimeVariant ? 'OTD Reality Check' : 'Your OTD Estimate'}
               </h2>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
@@ -830,7 +831,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                 </div>
               </div>
 
-              {hasFirstTimePack && (
+              {isFirstTimeVariant && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -904,7 +905,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                 </div>
               )}
 
-              {hasInPersonPack && (
+              {isInPersonVariant && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
                   <h3 className="font-semibold text-gray-900 mb-4">Dealer vs Target</h3>
                   
