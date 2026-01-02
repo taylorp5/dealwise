@@ -36,7 +36,8 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
   
   // Initialize pack variant from prop (route-based, SSR-safe)
   // This ensures deterministic variant selection based on URL, not localStorage timing
-  const [packVariant, setPackVariant] = useState<'free' | 'first_time' | 'in_person'>(initialVariant)
+  // Use prop as source of truth - no localStorage reads during initial render
+  const [packVariant] = useState<'free' | 'first_time' | 'in_person'>(initialVariant)
   
   // Sync pack variant to localStorage for persistence (client-side only, in useEffect)
   // This is for persistence across sessions, but NOT required for correct initial render
@@ -57,9 +58,25 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
     }
   }, [packVariant, initialVariant])
   
-  // Check entitlements for route guarding (not UI rendering)
-  const hasInPersonEntitlement = hasPack('in_person') || hasAllAccess()
-  const hasFirstTimeEntitlement = hasPack('first_time') || hasAllAccess()
+  // Route guarding: Check entitlements for paid routes and redirect if needed
+  useEffect(() => {
+    if (typeof window === 'undefined') return // SSR guard
+    
+    if (packVariant === 'first_time') {
+      const hasFirstTimeEntitlement = hasPack('first_time') || hasAllAccess()
+      if (!hasFirstTimeEntitlement) {
+        router.replace('/packs?upgrade=first_time')
+        return
+      }
+    } else if (packVariant === 'in_person') {
+      const hasInPersonEntitlement = hasPack('in_person') || hasAllAccess()
+      if (!hasInPersonEntitlement) {
+        router.replace('/packs?upgrade=in_person')
+        return
+      }
+    }
+    // Free variant is always accessible, no check needed
+  }, [packVariant, router])
   
   // UI rendering is based on packVariant alone (route-based)
   // Entitlements are checked separately for route access control
@@ -78,6 +95,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
   const [taxRateOverride, setTaxRateOverride] = useState(false)
   const [taxRateResult, setTaxRateResult] = useState<TaxRateResult | null>(null)
   const [taxRateLoading, setTaxRateLoading] = useState(false)
+  const [taxLookupError, setTaxLookupError] = useState<string | null>(null)
   
   // Step 2: Fees
   const [docFee, setDocFee] = useState('')
@@ -219,6 +237,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
   useEffect(() => {
     if (state && !taxRateOverride) {
       setTaxRateLoading(true)
+      setTaxLookupError(null) // Clear any previous error
       const rate = getTaxRateForState(state)
       if (rate) {
         setTaxRate(rate.toString())
@@ -233,6 +252,13 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
       setTaxRateLoading(false)
     }
   }, [state, taxRateOverride])
+  
+  // Clear error when lookup succeeds
+  useEffect(() => {
+    if (taxRateResult && taxRateResult.source === 'zip_lookup') {
+      setTaxLookupError(null)
+    }
+  }, [taxRateResult])
 
   const handleLookupTax = async () => {
     if (!state || !registrationZip) {
@@ -243,24 +269,47 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
     setTaxRateLoading(true)
     try {
       const response = await fetch(`/api/tax-lookup?state=${encodeURIComponent(state)}&zip=${encodeURIComponent(registrationZip)}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
       const data = await response.json()
       
-      if (data.success && data.rate) {
-        setTaxRate(data.rate.toString())
-        setTaxRateResult({
-          stateBaseRate: data.stateBaseRate || data.rate,
-          combinedRate: data.rate,
-          confidence: data.confidence || 'high',
-          source: data.source || 'zip_lookup',
-          provider: data.provider || 'fallback',
-        })
+      if (data.success && data.data) {
+        // API returns { success: true, data: TaxRateResult }
+        const result = data.data
+        if (result.combinedRate !== undefined) {
+          setTaxRate(result.combinedRate.toString())
+        } else if (result.combinedRateRange) {
+          // Use midpoint if range is provided
+          const midpoint = (result.combinedRateRange.low + result.combinedRateRange.high) / 2
+          setTaxRate(midpoint.toString())
+        } else {
+          setTaxRate(result.stateBaseRate.toString())
+        }
+        setTaxRateResult(result)
         setTaxRateOverride(false)
       } else {
-        alert(data.error || 'Failed to lookup tax rate')
+        // API returned success: false or unexpected shape - fall back to state estimate
+        throw new Error(data.error || 'Tax lookup unavailable')
       }
     } catch (error) {
-      console.error('Tax lookup error:', error)
-      alert('Failed to lookup tax rate')
+      console.warn('Tax lookup error:', error)
+      // Graceful fallback: use state estimate
+      const stateRate = getTaxRateForState(state)
+      if (stateRate !== null) {
+        setTaxRate(stateRate.toString())
+        setTaxRateResult({
+          stateBaseRate: stateRate,
+          combinedRate: stateRate,
+          confidence: 'low',
+          source: 'state_estimate',
+          provider: 'fallback',
+        })
+      }
+      // Show non-scary message (no alert, just update UI)
+      setTaxLookupError('Tax lookup unavailable right now. Using state estimate. Please verify tax with dealer/DMV.')
     } finally {
       setTaxRateLoading(false)
     }
@@ -536,6 +585,22 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                       {!isFirstTimeVariant && ' Click "Override" to manually adjust.'}
                     </p>
                   )}
+                  
+                  {/* Graceful error message when lookup fails */}
+                  {taxLookupError && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs text-blue-800">
+                        {taxLookupError}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Tax Rate Disclaimer - Always visible for all variants */}
+                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-xs text-yellow-800">
+                      <strong>⚠️ Tax rates are estimates only.</strong> Vehicle tax rules vary by state and locality. Always verify the actual tax rate with the dealer or your state DMV before finalizing.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex justify-end">

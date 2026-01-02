@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/packs":{},"/api/tax-lookup":{},"/api/stripe/webhook":{},"/api/listing/resolve":{}}}
+{"version":1,"functions":{"/api/packs":{},"/api/stripe/webhook":{},"/api/listing/resolve":{},"/api/tax-lookup":{}}}
