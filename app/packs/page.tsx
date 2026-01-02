@@ -260,10 +260,11 @@ export default function PacksPage() {
   const getPackBenefits = (pack: PackConfig): string[] => {
     const benefits: Record<string, string[]> = {
       first_time: [
-        'Guided decision questions for financing & affordability',
-        'Educational explanations of APR, terms, and fees',
-        'Personalized checklist to avoid common mistakes',
-        'Real-time advisor for "what am I missing?" questions',
+        'Deal Readiness Assessment for any listing (fair price, OTD reality check, confidence verdict)',
+        'Clear explanations of fees, taxes, APR, and loan terms as they apply to your deal',
+        'Personalized checklist of what to verify before you proceed',
+        'Visibility into common hidden costs and dealer add-ons',
+        'Safe, written-only guidance for requesting OTD and clarifying fees',
       ],
       cash: [
         'Strategic timing for cash disclosure',
@@ -463,18 +464,18 @@ export default function PacksPage() {
                           Includes: Prepare Me, Draft Builder, Live Coach
                         </p>
                       </>
-                    ) : (
+                    ) : pack.id === 'first_time' ? null : (
                       <Link 
                         href={getCopilotRouteForPack(pack.id)} 
                         className="flex items-center justify-between w-full px-3 py-2 bg-white rounded-md border border-brand-border hover:border-primary hover:bg-brand-background transition-colors group"
                       >
                         <span className="text-sm font-medium text-brand-ink">
-                          {pack.id === 'first_time' ? 'First-Time Buyer Negotiation Draft Builder' : 
-                           'Negotiation Draft Builder'}
+                          Negotiation Draft Builder
                         </span>
                         <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
                       </Link>
                     )}
+                    {/* Note: First-Time Buyer Pack does NOT show "Negotiation Draft Builder" link - functionality integrated into Deal Readiness Assessment */}
                   </div>
                 </div>
               )}
