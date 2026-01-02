@@ -7,8 +7,7 @@ import Button from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { getTaxRateForState, formatStateName, stateTaxRates } from '@/lib/utils/tax-rates'
 import type { TaxRateResult } from '@/lib/utils/tax-lookup'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
-import { usePackEntitlements } from '@/hooks/usePackEntitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 
 type Step = 'basics' | 'fees' | 'addons' | 'results'
 
@@ -32,7 +31,7 @@ export interface CalculatorPageProps {
 export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPageProps = {}) {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { ownedPacks } = usePackEntitlements()
+  const { hasFirstTime, hasInPerson, loading: entitlementsLoading, entitlements } = useEntitlements()
   
   // Initialize pack variant from prop (route-based, SSR-safe)
   // This ensures deterministic variant selection based on URL, not localStorage timing
@@ -59,24 +58,40 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
   }, [packVariant, initialVariant])
   
   // Route guarding: Check entitlements for paid routes and redirect if needed
+  // Use Supabase entitlements (single source of truth) instead of localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return // SSR guard
+    if (entitlementsLoading || authLoading) return // Wait for entitlements to load
     
     if (packVariant === 'first_time') {
-      const hasFirstTimeEntitlement = hasPack('first_time') || hasAllAccess()
-      if (!hasFirstTimeEntitlement) {
+      if (!hasFirstTime) {
         router.replace('/packs?upgrade=first_time')
         return
       }
     } else if (packVariant === 'in_person') {
-      const hasInPersonEntitlement = hasPack('in_person') || hasAllAccess()
-      if (!hasInPersonEntitlement) {
+      if (!hasInPerson) {
         router.replace('/packs?upgrade=in_person')
         return
       }
     }
     // Free variant is always accessible, no check needed
-  }, [packVariant, router])
+  }, [packVariant, router, hasFirstTime, hasInPerson, entitlementsLoading, authLoading])
+  
+  // Dev-only debug banner (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+      console.log('[Calculator] Entitlement Debug:', {
+        path: window.location.pathname,
+        packVariant,
+        user: user ? { id: user.id, email: user.email } : null,
+        entitlements,
+        hasFirstTime,
+        hasInPerson,
+        entitlementsLoading,
+        authLoading,
+      })
+    }
+  }, [packVariant, user, entitlements, hasFirstTime, hasInPerson, entitlementsLoading, authLoading])
   
   // UI rendering is based on packVariant alone (route-based)
   // Entitlements are checked separately for route access control
@@ -445,6 +460,23 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {/* Dev-only debug banner */}
+      {process.env.NODE_ENV !== 'production' && packVariant !== 'free' && (
+        <div className="max-w-4xl mx-auto px-4 mb-4">
+          <Card className="p-4 bg-yellow-50 border-yellow-300">
+            <h3 className="text-sm font-semibold text-yellow-900 mb-2">🔍 Dev Debug: Entitlement Check</h3>
+            <div className="text-xs text-yellow-800 space-y-1">
+              <p><strong>Path:</strong> {typeof window !== 'undefined' ? window.location.pathname : 'SSR'}</p>
+              <p><strong>Pack Variant:</strong> {packVariant}</p>
+              <p><strong>User:</strong> {user ? `${user.email} (${user.id.slice(0, 8)}...)` : 'Not logged in'}</p>
+              <p><strong>Entitlements:</strong> {JSON.stringify(entitlements)}</p>
+              <p><strong>hasFirstTime:</strong> {hasFirstTime ? '✅' : '❌'}</p>
+              <p><strong>hasInPerson:</strong> {hasInPerson ? '✅' : '❌'}</p>
+              <p><strong>Loading:</strong> {entitlementsLoading || authLoading ? '⏳' : '✅'}</p>
+            </div>
+          </Card>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <Card className="p-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Smart OTD Builder</h1>
