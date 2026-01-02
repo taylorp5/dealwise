@@ -1,7 +1,9 @@
+'use client'
+
 import React from 'react'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger'
+  variant?: 'primary' | 'secondary'
   size?: 'sm' | 'md' | 'lg'
   children: React.ReactNode
 }
@@ -13,12 +15,11 @@ export default function Button({
   children,
   ...props
 }: ButtonProps) {
-  const baseClasses = 'font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center'
+  const baseClasses = 'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
   
   const variantClasses = {
-    primary: 'bg-brand-blue text-white hover:bg-brand-blue-hover hover:shadow-md focus:ring-ring focus:ring-offset-2 active:scale-[0.98]',
-    secondary: 'bg-white text-brand-ink hover:bg-brand-background focus:ring-ring focus:ring-offset-2 active:scale-[0.98] border border-brand-border',
-    danger: 'bg-red-600 text-white hover:bg-red-700 hover:shadow-md focus:ring-red-500 focus:ring-offset-2 active:scale-[0.98]',
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
   }
   
   const sizeClasses = {

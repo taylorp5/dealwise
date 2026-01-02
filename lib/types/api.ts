@@ -74,6 +74,7 @@ export interface AnalyzeListingRequest {
   // Buyer registration location (for tax calculation)
   registrationState?: string // Required for accurate tax calculation
   registrationZip?: string // Optional but strongly recommended for accurate rates
+  packVariant?: 'free' | 'first_time' | 'in_person' // Pack variant for conditional logic
   confirmedData?: Partial<{
     price?: number
     year?: number

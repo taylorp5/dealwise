@@ -610,7 +610,7 @@ export default function ScriptWizard({
                         </div>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="secondary"
                           onClick={() => {
                             setCompetitiveOffers(competitiveOffers.filter((_, i) => i !== index))
                           }}

@@ -33,3 +33,4 @@ If you're seeing errors like:
 
 **For now, we recommend disabling CAPTCHA in Supabase to unblock email auth.**
 
+

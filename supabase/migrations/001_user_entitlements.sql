@@ -26,3 +26,4 @@ CREATE POLICY "Users can view own entitlements"
 
 -- No direct user insert/update policies (only service role updates via server)
 
+

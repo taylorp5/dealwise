@@ -208,3 +208,4 @@ const PACK_PRICES: Record<string, number> = {
 - Service role key bypasses RLS - only use server-side
 - Webhook verifies Stripe signatures to prevent unauthorized requests
 
+

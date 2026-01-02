@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 
 interface CardProps {
@@ -7,7 +9,7 @@ interface CardProps {
 
 export default function Card({ children, className = '' }: CardProps) {
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-slate-200 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
       {children}
     </div>
   )

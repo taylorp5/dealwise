@@ -17,8 +17,7 @@
   - **Verify**: Page shows "Analyzer Variant: first_time" (dev mode) or first-time specific content
 - [ ] Click "Smart OTD Builder" link
   - **Expected**: Should land on `/calculator`
-- [ ] Click "First-Time Buyer Negotiation Draft Builder" link
-  - **Expected**: Should land on `/copilot/first-time`
+- [ ] Verify "First-Time Buyer Negotiation Draft Builder" link is **NOT** shown (removed - functionality integrated into Deal Readiness Assessment)
 
 ### In-Person Negotiation Pack
 - [ ] Go to `/packs` page
@@ -124,4 +123,5 @@ If any test fails, report:
 3. Browser console errors (if any)
 4. Network tab errors (if any)
 5. Screenshots if applicable
+
 

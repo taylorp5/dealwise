@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,6 +26,7 @@ interface AddOn {
 }
 
 export default function CalculatorPage() {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { ownedPacks } = usePackEntitlements()
   const hasInPersonPack = hasPack('in_person') || hasAllAccess()
@@ -55,12 +57,24 @@ export default function CalculatorPage() {
   // Step 3: Add-ons
   const [addOnsText, setAddOnsText] = useState('')
   const [addOns, setAddOns] = useState<AddOn[]>([])
-  
+
   // Results
   const [warnings, setWarnings] = useState<string[]>([])
   const [otdLow, setOtdLow] = useState(0)
   const [otdExpected, setOtdExpected] = useState(0)
   const [otdHigh, setOtdHigh] = useState(0)
+
+  // FTB-only: Collapsible sections
+  const [showCustomFees, setShowCustomFees] = useState(false)
+  const [showOtherDealerFees, setShowOtherDealerFees] = useState(false)
+
+  // In-Person only: Dealer vs Target panel
+  const [dealerCurrentOTD, setDealerCurrentOTD] = useState('')
+  const [targetOTD, setTargetOTD] = useState('')
+  const [walkAwayCeiling, setWalkAwayCeiling] = useState('')
+
+  // FTB only: Dealer-Quoted OTD
+  const [dealerQuotedOTD, setDealerQuotedOTD] = useState('')
 
   // Load data from localStorage on mount (from DealPlanDisplay)
   useEffect(() => {
@@ -91,9 +105,87 @@ export default function CalculatorPage() {
         localStorage.removeItem('otd_builder_state')
         localStorage.removeItem('otd_builder_tax_rate')
       }
+
+      // Load In-Person pack Dealer vs Target values (best effort from existing storage)
+      if (hasInPersonPack) {
+        // Try to load from Prepare Me state first
+        const prepareState = localStorage.getItem('copilot_in_person_prepare_state')
+        if (prepareState) {
+          try {
+            const parsed = JSON.parse(prepareState)
+            if (parsed.targetOTD) setTargetOTD(parsed.targetOTD)
+            if (parsed.walkAwayOTD) setWalkAwayCeiling(parsed.walkAwayOTD)
+          } catch (e) {
+            console.error('Failed to parse Prepare Me state:', e)
+          }
+        }
+        
+        // Fallback to dedicated keys
+        const savedDealerOTD = localStorage.getItem('in_person_dealer_current_otd')
+        const savedTargetOTD = localStorage.getItem('in_person_target_otd')
+        const savedWalkAway = localStorage.getItem('in_person_walkaway_ceiling')
+        
+        if (savedDealerOTD) setDealerCurrentOTD(savedDealerOTD)
+        if (savedTargetOTD && !targetOTD) setTargetOTD(savedTargetOTD)
+        if (savedWalkAway && !walkAwayCeiling) setWalkAwayCeiling(savedWalkAway)
+      }
+
+      // Load FTB pack Dealer-Quoted OTD
+      if (hasFirstTimePack) {
+        const savedDealerQuoted = localStorage.getItem('first_time_dealer_quoted_otd')
+        if (savedDealerQuoted) setDealerQuotedOTD(savedDealerQuoted)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run on mount
+
+  // Save In-Person pack Dealer vs Target values to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && hasInPersonPack) {
+      if (dealerCurrentOTD) {
+        localStorage.setItem('in_person_dealer_current_otd', dealerCurrentOTD)
+      }
+      if (targetOTD) {
+        localStorage.setItem('in_person_target_otd', targetOTD)
+        // Also update Prepare Me state if it exists
+        const prepareState = localStorage.getItem('copilot_in_person_prepare_state')
+        if (prepareState) {
+          try {
+            const parsed = JSON.parse(prepareState)
+            parsed.targetOTD = targetOTD
+            localStorage.setItem('copilot_in_person_prepare_state', JSON.stringify(parsed))
+          } catch (e) {
+            // Ignore if parse fails
+          }
+        }
+      }
+      if (walkAwayCeiling) {
+        localStorage.setItem('in_person_walkaway_ceiling', walkAwayCeiling)
+        // Also update Prepare Me state if it exists
+        const prepareState = localStorage.getItem('copilot_in_person_prepare_state')
+        if (prepareState) {
+          try {
+            const parsed = JSON.parse(prepareState)
+            parsed.walkAwayOTD = walkAwayCeiling
+            localStorage.setItem('copilot_in_person_prepare_state', JSON.stringify(parsed))
+          } catch (e) {
+            // Ignore if parse fails
+          }
+        }
+      }
+    }
+  }, [dealerCurrentOTD, targetOTD, walkAwayCeiling, hasInPersonPack])
+
+  // Save FTB pack Dealer-Quoted OTD to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && hasFirstTimePack) {
+      if (dealerQuotedOTD) {
+        localStorage.setItem('first_time_dealer_quoted_otd', dealerQuotedOTD)
+      } else {
+        localStorage.removeItem('first_time_dealer_quoted_otd')
+      }
+    }
+  }, [dealerQuotedOTD, hasFirstTimePack])
 
   // Resolve tax rate when state or ZIP changes (if not overridden)
   useEffect(() => {
@@ -365,7 +457,9 @@ export default function CalculatorPage() {
           {/* Step 1: Basics */}
           {currentStep === 'basics' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 1: Basics</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Step 1: {hasFirstTimePack ? 'Verify Your Location & Price' : 'Basics'}
+              </h2>
               
               {/* Registration Location for Tax Calculation */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
@@ -536,7 +630,7 @@ export default function CalculatorPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tax Rate (%) <span className="text-red-500">*</span>
-                  {!taxRateOverride && (
+                  {!hasFirstTimePack && !taxRateOverride && (
                     <button
                       type="button"
                       onClick={() => setTaxRateOverride(true)}
@@ -557,11 +651,13 @@ export default function CalculatorPage() {
                   placeholder={taxRateResult?.combinedRate?.toFixed(2) || (taxRateResult?.combinedRateRange ? `${taxRateResult.combinedRateRange.low.toFixed(2)}-${taxRateResult.combinedRateRange.high.toFixed(2)}` : getTaxRateForState(state)?.toFixed(2) || '6.25')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                  disabled={taxRateLoading}
+                  disabled={taxRateLoading || hasFirstTimePack}
+                  readOnly={hasFirstTimePack}
                 />
                 {taxRate && !taxRateOverride && taxRateResult && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {taxRateResult.combinedRate ? `Auto-filled from ${taxRateResult.confidence} confidence lookup.` : `Auto-filled from state base rate + local estimate.`} Click "Override" to manually adjust.
+                    {taxRateResult.combinedRate ? `Auto-filled from ${taxRateResult.confidence} confidence lookup.` : `Auto-filled from state base rate + local estimate.`}
+                    {!hasFirstTimePack && ' Click "Override" to manually adjust.'}
                   </p>
                 )}
                 {taxRate && !taxRateOverride && !taxRateResult && (
@@ -581,7 +677,18 @@ export default function CalculatorPage() {
           {/* Step 2: Fees */}
           {currentStep === 'fees' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 2: Fees</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Step 2: {hasFirstTimePack ? 'Common Fees to Expect' : 'Fees'}
+              </h2>
+              
+              {/* FTB Guardrail Helper Text */}
+              {hasFirstTimePack && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-blue-800">
+                    If the dealer hasn't provided a fee in writing, don't assume it applies. Ask for an itemized OTD worksheet.
+                  </p>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -626,22 +733,35 @@ export default function CalculatorPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Other Dealer Fees (optional)
-                  </label>
-                  <input
-                    type="number"
-                    value={dealerFees}
-                    onChange={(e) => setDealerFees(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                {!hasFirstTimePack || showOtherDealerFees ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Other Dealer Fees (optional)
+                    </label>
+                    <input
+                      type="number"
+                      value={dealerFees}
+                      onChange={(e) => setDealerFees(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowOtherDealerFees(true)}
+                      className="text-sm text-blue-600 hover:text-blue-700 underline"
+                    >
+                      Add other dealer fees (optional)
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Custom Fees (from dealer worksheet)</h3>
+              {!hasFirstTimePack || showCustomFees ? (
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Custom Fees (from dealer worksheet)</h3>
                 <div className="space-y-2">
                   {customFees.map((fee) => (
                     <div key={fee.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
@@ -677,14 +797,37 @@ export default function CalculatorPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
+                </div>
+              ) : (
+                <div className="border-t border-gray-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomFees(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 underline"
+                  >
+                    Add fees from dealer worksheet (optional)
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* Step 3: Add-ons */}
           {currentStep === 'addons' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 3: Add-on Detector</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Step 3: {hasFirstTimePack ? 'Identify Optional Add-Ons' : 'Add-on Detector'}
+              </h2>
+              
+              {/* FTB Guardrail Helper Text */}
+              {hasFirstTimePack && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-blue-800">
+                    Most add-ons are optional. Paste the worksheet line items to identify what can be removed before agreeing to OTD.
+                  </p>
+                </div>
+              )}
+              
               <p className="text-sm text-gray-600 mb-4">
                 Paste line items from the dealer worksheet (e.g., "Nitrogen $299, Paint protection $899")
               </p>
@@ -750,7 +893,9 @@ export default function CalculatorPage() {
           {/* Step 4: Results */}
           {currentStep === 'results' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Your OTD Estimate</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                {hasFirstTimePack ? 'OTD Reality Check' : 'Your OTD Estimate'}
+              </h2>
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Out-the-Door Price Range</h3>
@@ -772,6 +917,185 @@ export default function CalculatorPage() {
                   <strong>⚠️ Validation Required:</strong> This estimate includes tax based on the rate you provided. Tax rates are estimates only and may vary by state, locality, and vehicle type. Always verify the actual tax rate and final OTD price with your dealer before finalizing your purchase.
                 </div>
               </div>
+
+              {/* FTB Pack: Dealer-Quoted OTD Input and Verdict */}
+              {hasFirstTimePack && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Dealer-Quoted OTD (optional)
+                    </label>
+                    <input
+                      type="number"
+                      value={dealerQuotedOTD}
+                      onChange={(e) => setDealerQuotedOTD(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Paste the OTD the dealer sent you (from email or worksheet).
+                    </p>
+                  </div>
+
+                  {/* Verdict Block */}
+                  {dealerQuotedOTD && parseFloat(dealerQuotedOTD) > 0 && (() => {
+                    const dealerQuote = parseFloat(dealerQuotedOTD)
+                    const highEstimate = otdHigh
+                    let verdict: { icon: string; color: string; title: string; nextStep: string } | null = null
+
+                    if (dealerQuote <= highEstimate) {
+                      verdict = {
+                        icon: '✅',
+                        color: 'green',
+                        title: 'Within expected range',
+                        nextStep: 'Confirm everything in writing before agreeing.'
+                      }
+                    } else if (dealerQuote > highEstimate && dealerQuote <= highEstimate * 1.05) {
+                      verdict = {
+                        icon: '⚠️',
+                        color: 'yellow',
+                        title: 'Slightly high — ask for itemized breakdown',
+                        nextStep: 'Request a written itemized OTD breakdown and clarify optional add-ons.'
+                      }
+                    } else {
+                      verdict = {
+                        icon: '❌',
+                        color: 'red',
+                        title: 'Inflated — add-ons/fees likely',
+                        nextStep: 'Request a written itemized OTD breakdown and clarify optional add-ons.'
+                      }
+                    }
+
+                    return (
+                      <div className={`bg-white border-2 rounded-lg p-4 ${
+                        verdict.color === 'green' ? 'border-green-300' :
+                        verdict.color === 'yellow' ? 'border-yellow-300' :
+                        'border-red-300'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">{verdict.icon}</span>
+                          <h4 className={`font-semibold ${
+                            verdict.color === 'green' ? 'text-green-900' :
+                            verdict.color === 'yellow' ? 'text-yellow-900' :
+                            'text-red-900'
+                          }`}>
+                            {verdict.title}
+                          </h4>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <p className="text-sm text-gray-700">
+                            <strong>Next step:</strong> {verdict.nextStep}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
+              {/* In-Person Pack: Dealer vs Target Panel */}
+              {hasInPersonPack && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">Dealer vs Target</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dealer Current OTD
+                      </label>
+                      <input
+                        type="number"
+                        value={dealerCurrentOTD}
+                        onChange={(e) => setDealerCurrentOTD(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Your Target OTD
+                      </label>
+                      <input
+                        type="number"
+                        value={targetOTD}
+                        onChange={(e) => setTargetOTD(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Walk-Away Ceiling
+                      </label>
+                      <input
+                        type="number"
+                        value={walkAwayCeiling}
+                        onChange={(e) => setWalkAwayCeiling(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gap Calculations */}
+                  <div className="bg-white border border-orange-300 rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-sm text-gray-600">Gap to Target:</span>
+                        <span className="ml-2 font-semibold text-gray-900">
+                          {dealerCurrentOTD && targetOTD
+                            ? (() => {
+                                const gap = parseFloat(dealerCurrentOTD) - parseFloat(targetOTD)
+                                return gap >= 0
+                                  ? `+$${gap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : `-$${Math.abs(gap).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              })()
+                            : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Gap to Ceiling:</span>
+                        <span className="ml-2 font-semibold text-gray-900">
+                          {dealerCurrentOTD && walkAwayCeiling
+                            ? (() => {
+                                const gap = parseFloat(dealerCurrentOTD) - parseFloat(walkAwayCeiling)
+                                return gap >= 0
+                                  ? `+$${gap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : `-$${Math.abs(gap).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              })()
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guidance Text */}
+                  {dealerCurrentOTD && targetOTD && (
+                    <div className="bg-white border border-orange-300 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-gray-700">
+                        {(() => {
+                          const gap = parseFloat(dealerCurrentOTD) - parseFloat(targetOTD)
+                          return gap > 0
+                            ? "You're above target. Don't agree until OTD is at or below your number."
+                            : "You're at/under target. Confirm the written OTD breakdown before signing."
+                        })()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Open Deal Decision Advisor Button */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => router.push('/copilot/in-person/live')}
+                    className="w-full"
+                  >
+                    Open Deal Decision Advisor
+                  </Button>
+                </div>
+              )}
 
               {warnings.length > 0 && (
                 <div className="space-y-2">

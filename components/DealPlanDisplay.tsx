@@ -3117,7 +3117,17 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                 onClick={() => {
                   // Scroll to the written templates section
                   const templatesSection = document.querySelector('[data-templates-section]')
-                  templatesSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  if (templatesSection) {
+                    templatesSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    
+                    // Add visual highlight after scroll
+                    templatesSection.classList.add('ring-4', 'ring-blue-400', 'ring-opacity-75', 'transition-all', 'duration-300')
+                    
+                    // Remove highlight after animation
+                    setTimeout(() => {
+                      templatesSection.classList.remove('ring-4', 'ring-blue-400', 'ring-opacity-75')
+                    }, 2000)
+                  }
                 }}
                 className="bg-white !text-black hover:bg-gray-100"
               >

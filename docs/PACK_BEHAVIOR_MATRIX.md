@@ -11,9 +11,9 @@ This document defines the correct behavior for each pack variant (Free, First-Ti
 - **Negotiation Draft Builder**: `/copilot/free`
 
 ### First-Time Buyer Pack
-- **Listing Analyzer**: `/analyzer/first-time`
+- **Listing Analyzer** (Deal Readiness Assessment): `/analyzer/first-time` ✅
 - **Smart OTD Builder**: `/calculator` ✅
-- **Negotiation Draft Builder**: `/copilot/first-time`
+- **Negotiation Draft Builder**: ❌ (Removed - functionality integrated into Deal Readiness Assessment)
 
 ### In-Person Negotiation Pack
 - **Listing Analyzer**: `/analyzer/in-person`
@@ -32,7 +32,7 @@ This document defines the correct behavior for each pack variant (Free, First-Ti
 
 ### Negotiation Draft Builder Variants
 - **Free**: Basic negotiation scripts
-- **First-Time**: First-time buyer specific guidance and scripts
+- **First-Time**: ❌ (Removed - safe written guardrail messages now embedded in Deal Readiness Assessment)
 - **In-Person**: 
   - Mode Picker at `/copilot/in-person`
   - Prepare Me flow at `/copilot/in-person/prepare`
@@ -60,7 +60,7 @@ This document defines the correct behavior for each pack variant (Free, First-Ti
 
 ### Copilot Routes
 - `/copilot/free`: No entitlement check (always accessible)
-- `/copilot/first-time`: Requires `first_time` pack or `bundle` pack
+- `/copilot/first-time`: Redirects to `/analyzer/first-time` (Deal Readiness Assessment)
 - `/copilot/in-person`: Requires `in_person` pack or `bundle` pack
 - `/copilot/in-person/prepare`: Requires `in_person` pack or `bundle` pack
 - `/copilot/in-person/live`: Requires `in_person` pack or `bundle` pack
@@ -71,4 +71,5 @@ This document defines the correct behavior for each pack variant (Free, First-Ti
 - Pack context should NOT mix between variants
 - Each route maintains its own variant context
 - Entitlements are checked separately from pack context
+
 

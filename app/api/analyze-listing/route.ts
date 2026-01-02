@@ -332,26 +332,30 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (isManualEntry && !body.confirmedData) {
-      // Manual entry without confirmedData - this shouldn't happen, but handle gracefully
+      // Manual entry without confirmedData
+      // Skip review step for all pack variants - allow manual entry to go straight to deal plan generation
       extractedListing = {
         sourceUrl: url,
         sourceSite: 'manual',
         blocked: false,
-        confidence: 0,
-        issues: ['Manual entry requires confirmed data'],
+        confidence: 1.0, // High confidence for manual entry
+        issues: [],
       } as ListingData
-      blocked = true
+      blocked = false // Don't block - allow deal plan generation
     }
 
     // Check if we should generate Deal Plan
     // Only generate if:
     // 1. Extraction succeeded (not blocked, has data), OR
-    // 2. User provided confirmedData (manual override)
-    const shouldGenerateDealPlan = !blocked || !!body.confirmedData
+    // 2. User provided confirmedData (manual override), OR
+    // 3. Manual entry (skip review step for all pack variants)
+    const isManualEntrySkipReview = isManualEntry
+    const shouldGenerateDealPlan = !blocked || !!body.confirmedData || isManualEntrySkipReview
     
     // If blocked and no confirmed data, skip deal plan generation
     // Return 200 with requiresUserInput: true (never 500)
-    if (blocked && !body.confirmedData) {
+    // Exception: Skip review step for manual entry (all pack variants)
+    if (blocked && !body.confirmedData && !isManualEntrySkipReview) {
       // Return early with extraction result and diagnostics, but no deal plan
       const normalizedExtraction: ListingData = extractedListing ? {
         ...extractedListing,

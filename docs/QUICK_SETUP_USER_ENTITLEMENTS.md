@@ -96,3 +96,4 @@ If it returns `true`, the table exists. If `false`, run the migration above.
 - Try resending the webhook event in Stripe
 - Check Vercel logs for any other errors
 
+

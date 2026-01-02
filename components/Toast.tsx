@@ -42,3 +42,4 @@ export default function Toast({ message, type, onClose, duration = 5000 }: Toast
   )
 }
 
+
