@@ -129,7 +129,7 @@ export async function resolveTaxRate(
       confidence: 'low',
       source: 'state_estimate',
       provider: 'fallback',
-      disclaimer: 'State not found in tax rate table. Please verify tax rate manually.',
+      disclaimer: 'Tax rates are estimates. Always verify with dealer.',
     }
   }
 
@@ -148,7 +148,7 @@ export async function resolveTaxRate(
         confidence: 'high',
         source: 'zip_lookup',
         provider: 'taxjar',
-        disclaimer: 'Rate based on ZIP code lookup. Vehicle tax rules vary by state and may differ from general sales tax. Verify with dealer itemization.',
+        disclaimer: 'Tax rates are estimates. Always verify with dealer.',
       }
     }
 
@@ -163,7 +163,7 @@ export async function resolveTaxRate(
         confidence: 'high',
         source: 'zip_lookup',
         provider: 'avalara',
-        disclaimer: 'Rate based on ZIP code lookup. Vehicle tax rules vary by state and may differ from general sales tax. Verify with dealer itemization.',
+        disclaimer: 'Tax rates are estimates. Always verify with dealer.',
       }
     }
 
@@ -179,7 +179,7 @@ export async function resolveTaxRate(
       confidence: 'medium',
       source: 'state_table',
       provider: 'fallback',
-      disclaimer: 'ZIP lookup unavailable. Using state base rate + estimated local range. Vehicle tax rules vary by state and may differ from general sales tax. Verify with dealer itemization.',
+      disclaimer: 'Tax rates are estimates. Always verify with dealer.',
     }
   }
 
@@ -195,7 +195,7 @@ export async function resolveTaxRate(
     confidence: 'low',
     source: 'state_estimate',
     provider: 'fallback',
-    disclaimer: 'ZIP code not provided. Using state base rate + estimated local range. For accurate rates, provide ZIP code. Vehicle tax rules vary by state and may differ from general sales tax. Verify with dealer itemization.',
+    disclaimer: 'Tax rates are estimates. Always verify with dealer.',
   }
 }
 

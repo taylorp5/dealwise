@@ -2093,12 +2093,12 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                   
                   {/* Disclaimer */}
                   {otdAssumptions.taxRate.disclaimer && (
-                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                      <strong>Note:</strong> {otdAssumptions.taxRate.disclaimer}
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                      {otdAssumptions.taxRate.disclaimer}
                     </div>
                   )}
-                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                    <strong>⚠️ Validation Required:</strong> Tax rates are estimates only. Vehicle tax rules vary by state and locality, and may differ from general sales tax. ZIP-based estimates can be imperfect. Always verify the actual tax rate with your dealer or state DMV before finalizing your purchase.
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                    Tax rates are estimates. Always verify with dealer.
                   </div>
                 </div>
                 <div>
@@ -2164,8 +2164,8 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             </div>
           </div>
           
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-            <strong>⚠️ Validation Required:</strong> This OTD estimate includes tax based on estimated rates. Tax rates are estimates only and may vary by state, locality, and vehicle type. Always verify the actual tax rate and final OTD price with your dealer before finalizing your purchase.
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+            Tax rates are estimates. Always verify with dealer.
           </div>
 
           {dealPlan.otdEstimate && (() => {

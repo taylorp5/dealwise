@@ -52,6 +52,7 @@ export default function FreeCopilotPage() {
   const [taxRateOverride, setTaxRateOverride] = useState(false)
   const [taxRateResult, setTaxRateResult] = useState<TaxRateResult | null>(null)
   const [taxRateLoading, setTaxRateLoading] = useState(false)
+  const [taxLookupMessage, setTaxLookupMessage] = useState<string | null>(null)
   const [tradeIn, setTradeIn] = useState<TradeInStatus>('none')
   const [tradeInValue, setTradeInValue] = useState('')
   const [preApprovalApr, setPreApprovalApr] = useState('')
@@ -120,6 +121,19 @@ export default function FreeCopilotPage() {
             } else {
               setTaxRate(result.stateBaseRate.toFixed(2))
             }
+            // Show message if using fallback
+            if (result.confidence === 'low' || result.provider === 'fallback' || result.disclaimer) {
+              setTaxLookupMessage('Using state estimate. Tax rates are estimates. Always verify with dealer.')
+            } else {
+              setTaxLookupMessage(null)
+            }
+          } else {
+            // Fallback to state rate
+            const rate = getTaxRateForState(state)
+            if (rate !== null) {
+              setTaxRate(rate.toFixed(2))
+            }
+            setTaxLookupMessage('Using state estimate. Tax rates are estimates. Always verify with dealer.')
           }
           setTaxRateLoading(false)
         })
@@ -129,6 +143,7 @@ export default function FreeCopilotPage() {
           if (rate !== null) {
             setTaxRate(rate.toFixed(2))
           }
+          setTaxLookupMessage('Using state estimate. Tax rates are estimates. Always verify with dealer.')
           setTaxRateLoading(false)
         })
     } else if (!state) {
@@ -422,9 +437,18 @@ export default function FreeCopilotPage() {
                     <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                   )}
                 </div>
-                <p className="mt-1.5 text-xs text-gray-500 italic">
-                  This information needs to be verified by the user. Tax rates may vary by location and vehicle type.
-                </p>
+                {taxLookupMessage && (
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      {taxLookupMessage}
+                    </p>
+                  </div>
+                )}
+                {!taxLookupMessage && (
+                  <p className="mt-1.5 text-xs text-blue-600">
+                    Tax rates are estimates. Always verify with dealer.
+                  </p>
+                )}
               </div>
               
               {/* Trade In */}

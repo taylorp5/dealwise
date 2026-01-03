@@ -328,7 +328,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
         })
       }
       // Show non-scary message (no alert, just update UI)
-      setTaxLookupError('Tax lookup unavailable right now. Using state estimate. Please verify tax with dealer/DMV.')
+      setTaxLookupError('Using state estimate. Tax rates are estimates. Always verify with dealer.')
     } finally {
       setTaxRateLoading(false)
     }
@@ -743,9 +743,9 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                   )}
                   
                   {/* Tax Rate Disclaimer - Always visible for all variants */}
-                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800">
-                      <strong>⚠️ Tax rates are estimates only.</strong> Vehicle tax rules vary by state and locality. Always verify the actual tax rate with the dealer or your state DMV before finalizing.
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      Tax rates are estimates. Always verify with dealer.
                     </p>
                   </div>
                 </div>
