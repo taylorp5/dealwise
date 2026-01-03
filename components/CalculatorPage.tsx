@@ -22,6 +22,8 @@ interface AddOn {
   name: string
   price: number
   classification: 'normal' | 'maybe' | 'inflated'
+  category?: string
+  guidance?: string
 }
 
 export interface CalculatorPageProps {
@@ -383,6 +385,84 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
     return false
   }
 
+  // Category detection based on keywords
+  const detectCategory = (name: string): string => {
+    const lowerName = name.toLowerCase()
+    
+    if (lowerName.includes('nitrogen') || lowerName.includes('n2')) {
+      return 'nitrogen'
+    }
+    if (lowerName.includes('vin etch') || lowerName.includes('etching')) {
+      return 'vinEtch'
+    }
+    if (lowerName.includes('wheel lock')) {
+      return 'wheelLocks'
+    }
+    if (lowerName.includes('paint protection') || lowerName.includes('ceramic') || lowerName.includes('coating') || lowerName.includes('ppf')) {
+      return 'paintProtection'
+    }
+    if (lowerName.includes('tint') || lowerName.includes('window tint')) {
+      return 'tint'
+    }
+    if (lowerName.includes('warranty') || lowerName.includes('service contract') || lowerName.includes('vsc')) {
+      return 'warranty'
+    }
+    if (lowerName.includes('gap')) {
+      return 'gap'
+    }
+    if (lowerName.includes('lojack') || lowerName.includes('theft') || lowerName.includes('security') || lowerName.includes('tracker')) {
+      return 'theftSecurity'
+    }
+    
+    return 'unknown'
+  }
+
+  // Category-specific thresholds
+  const categoryThresholds: Record<string, { normalMax: number; highMax: number }> = {
+    nitrogen: { normalMax: 199, highMax: 399 },
+    vinEtch: { normalMax: 199, highMax: 399 },
+    wheelLocks: { normalMax: 199, highMax: 399 },
+    paintProtection: { normalMax: 999, highMax: 1999 },
+    tint: { normalMax: 599, highMax: 899 },
+    warranty: { normalMax: 2000, highMax: 3000 },
+    gap: { normalMax: 900, highMax: 1200 },
+    theftSecurity: { normalMax: 900, highMax: 1500 },
+    unknown: { normalMax: 499, highMax: 999 },
+  }
+
+  // Get category display label
+  const getCategoryLabel = (category: string): string => {
+    const labels: Record<string, string> = {
+      nitrogen: 'Nitrogen',
+      vinEtch: 'VIN Etch',
+      wheelLocks: 'Wheel Locks',
+      paintProtection: 'Paint Protection',
+      tint: 'Window Tint',
+      warranty: 'Warranty',
+      gap: 'GAP Insurance',
+      theftSecurity: 'Theft/Security',
+      unknown: 'Other',
+    }
+    return labels[category] || 'Other'
+  }
+
+  // Get guidance text based on classification and variant
+  const getGuidance = (classification: 'normal' | 'maybe' | 'inflated', category: string, variant: 'free' | 'first_time' | 'in_person'): string => {
+    if (classification === 'normal') {
+      return isFirstTimeVariant 
+        ? 'This price is within the typical range for this add-on type.'
+        : 'Within typical range.'
+    } else if (classification === 'maybe') {
+      return isFirstTimeVariant
+        ? 'This price is higher than typical. Consider asking if this add-on is optional or can be negotiated.'
+        : 'Higher than typical — consider negotiating.'
+    } else {
+      return isFirstTimeVariant
+        ? 'This price is significantly above typical market rates. This add-on is likely optional and can often be removed or negotiated down.'
+        : 'Significantly above typical — likely optional, negotiate removal or reduction.'
+    }
+  }
+
   const parseAddOns = () => {
     if (!addOnsText.trim()) {
       setAddOns([])
@@ -404,21 +484,28 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
       const name = line.replace(/[\$][\d,]+\.?\d*/g, '').replace(/[:-]\s*$/, '').trim()
 
       if (name && price > 0) {
-        // Classify add-on
-        let classification: 'normal' | 'maybe' | 'inflated' = 'normal'
-        const lowerName = name.toLowerCase()
+        // Detect category
+        const category = detectCategory(name)
+        const thresholds = categoryThresholds[category] || categoryThresholds.unknown
         
-        if (lowerName.includes('warranty') || lowerName.includes('protection') || lowerName.includes('coating')) {
+        // Classify based on category-specific thresholds
+        let classification: 'normal' | 'maybe' | 'inflated' = 'normal'
+        if (price > thresholds.highMax) {
+          classification = 'inflated'
+        } else if (price > thresholds.normalMax) {
           classification = 'maybe'
         }
-        if (lowerName.includes('etch') || lowerName.includes('fabric') || lowerName.includes('paint') || lowerName.includes('rust')) {
-          classification = 'inflated'
-        }
-        if (price > 2000) {
-          classification = 'inflated'
-        }
+        
+        // Get guidance text
+        const guidance = getGuidance(classification, category, packVariant)
 
-        parsed.push({ name, price, classification })
+        parsed.push({ 
+          name, 
+          price, 
+          classification,
+          category,
+          guidance,
+        })
       }
     }
 
@@ -891,6 +978,19 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                     </div>
                   )}
 
+                  {/* Disclaimer for FTB pack */}
+                  {isFirstTimeVariant && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">About these ranges</h4>
+                      <p className="text-xs text-gray-700 mb-2">
+                        Add-on price ranges are based on typical dealer pricing and common buyer reports. Actual pricing can vary by vehicle, coverage, and location.
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        These labels ("Typical range," "High," "Likely inflated") are meant to help you spot potential overcharges and decide what to question or remove — not to replace reviewing the written out-the-door breakdown from the dealer.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Part A: Instructional helper text */}
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
                     <p className="text-sm font-medium text-gray-900 mb-2">Format your add-ons using a new line or commas.</p>
@@ -951,10 +1051,15 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                                   : 'bg-gray-50 border-gray-200'
                               }`}
                             >
-                              <div className="flex justify-between items-center">
-                                <div>
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
                                   <p className="font-medium text-gray-900">{addon.name}</p>
                                   <p className="text-sm text-gray-600">${addon.price.toLocaleString()}</p>
+                                  {addon.category && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Category: {getCategoryLabel(addon.category)}
+                                    </p>
+                                  )}
                                 </div>
                                 <div>
                                   {addon.classification === 'inflated' && (
@@ -964,19 +1069,25 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
                                   )}
                                   {addon.classification === 'maybe' && (
                                     <span className="text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                                      ⚠️ Review carefully
+                                      ⚠️ High
                                     </span>
                                   )}
                                   {addon.classification === 'normal' && (
                                     <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                      ✓ Normal
+                                      ✓ Typical range
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              {addon.classification === 'inflated' && isInPersonVariant && (
-                                <p className="text-xs text-red-700 mt-2">
-                                  Consider negotiating removal or significant reduction.
+                              {addon.guidance && (
+                                <p className={`text-xs mt-2 ${
+                                  addon.classification === 'inflated'
+                                    ? 'text-red-700'
+                                    : addon.classification === 'maybe'
+                                    ? 'text-yellow-700'
+                                    : 'text-gray-600'
+                                }`}>
+                                  {addon.guidance}
                                 </p>
                               )}
                             </div>

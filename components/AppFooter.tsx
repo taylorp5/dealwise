@@ -22,7 +22,7 @@ export default function AppFooter() {
               Terms
             </Link>
             <Link
-              href="#"
+              href="/support"
               className="text-sm text-brand-muted hover:text-brand-ink transition-colors"
             >
               Support
