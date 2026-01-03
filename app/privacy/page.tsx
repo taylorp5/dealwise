@@ -75,10 +75,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-8 mb-4">Contact</h2>
               <p className="text-gray-700 leading-relaxed">
-                If you have questions about this Privacy Policy or how your information is handled, please contact us using the Support form available on our website or email us at{' '}
-                <a href="mailto:support@dealwise.us" className="text-blue-600 hover:text-blue-700 hover:underline">
-                  support@dealwise.us
-                </a>.
+                If you have questions about this Privacy Policy or how your information is handled, please contact us using the Support form available on our website.
               </p>
             </section>
           </div>
