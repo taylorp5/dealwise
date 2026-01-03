@@ -3292,10 +3292,33 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
-                onClick={() => handleOpenCopilot()}
+                onClick={() => {
+                  // For free variant, route directly to Negotiation Draft Builder
+                  const ctx = dealPlan.nextMoves.copilotLink
+                  const keySuffix = '_free'
+                  
+                  // Use calculated desired OTD if available, otherwise use the default from dealPlan
+                  const desiredOTDToUse = calculatedDesiredOTD !== null 
+                    ? calculatedDesiredOTD.toString() 
+                    : ctx.desiredOTD
+                  
+                  // Set up localStorage for copilot
+                  localStorage.setItem(`copilot_vehicle_price${keySuffix}`, ctx.vehiclePrice)
+                  localStorage.setItem(`copilot_desired_otd${keySuffix}`, desiredOTDToUse)
+                  localStorage.setItem(`copilot_car_context${keySuffix}`, ctx.carContext)
+                  
+                  // Add state to localStorage for copilot
+                  const state = dealPlan.otdEstimate?.assumptions?.registrationState || dealPlan.nextMoves.otdBuilderLink?.state
+                  if (state) {
+                    localStorage.setItem(`copilot_state${keySuffix}`, state)
+                  }
+                  
+                  // Route to Negotiation Draft Builder
+                  router.push('/copilot/free')
+                }}
                 className="bg-white !text-black hover:bg-gray-100"
               >
-                Generate Best Reply in Copilot
+                Negotiation Draft Builder
               </Button>
               <Button
                 onClick={handleOpenOTDBuilder}
