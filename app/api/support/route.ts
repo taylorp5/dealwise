@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Create Supabase admin client with service role key (bypasses RLS)
+// This ensures support tickets can always be submitted, even for anonymous users
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration for support tickets')
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,15 +47,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get Supabase client (server-side, can use service role if needed)
+    // Try to get current user if authenticated (using anon key client)
     const supabase = createServerSupabaseClient()
-
-    // Try to get current user if authenticated
     const { data: { user } } = await supabase.auth.getUser()
     const userId = user?.id || null
 
-    // Insert support ticket
-    const { data, error: insertError } = await supabase
+    // Use service role key for inserts (bypasses RLS, ensures reliability)
+    // This is safe because:
+    // 1. Server-side validation is performed above
+    // 2. This is a server-side API route (not exposed to client)
+    // 3. We want support tickets to always be submittable, even for anonymous users
+    const adminSupabase = getSupabaseAdmin()
+
+    // Insert support ticket using admin client (bypasses RLS)
+    const { data, error: insertError } = await adminSupabase
       .from('support_tickets')
       .insert({
         email: email.trim(),
@@ -49,15 +73,42 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      console.error('[Support] Error inserting ticket:', insertError)
+      console.error('[Support] Error inserting ticket:', {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+        hint: insertError.hint,
+        fullError: JSON.stringify(insertError, null, 2),
+      })
       
       // Check if table doesn't exist
-      if (insertError.message?.includes('does not exist') || insertError.message?.includes('schema cache')) {
+      const errorMessage = insertError.message || ''
+      const errorCode = insertError.code || ''
+      
+      if (
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('schema cache') ||
+        errorCode === '42P01' || // PostgreSQL: relation does not exist
+        errorCode === 'PGRST116' // PostgREST: relation does not exist
+      ) {
         return NextResponse.json(
           { 
             error: 'Support system not configured. Please contact the administrator.',
             details: 'Table support_tickets does not exist. Run migration: supabase/migrations/002_support_tickets.sql'
           },
+          { status: 500 }
+        )
+      }
+
+      // Check for RLS policy issues
+      if (
+        errorCode === '42501' || // PostgreSQL: insufficient privilege
+        errorMessage.includes('permission denied') ||
+        errorMessage.includes('policy violation')
+      ) {
+        console.error('[Support] RLS policy issue detected')
+        return NextResponse.json(
+          { error: 'Permission denied. Please ensure RLS policies are configured correctly.' },
           { status: 500 }
         )
       }
