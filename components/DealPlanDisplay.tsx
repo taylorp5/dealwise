@@ -1449,8 +1449,17 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   // Variant is now passed as prop from route, not from localStorage
   // Default to 'free' if not provided
   const [showEditAssumptions, setShowEditAssumptions] = useState(false)
-  const [otdAssumptions, setOtdAssumptions] = useState(dealPlan.otdEstimate.assumptions)
-  const [recalculatedOTD, setRecalculatedOTD] = useState(dealPlan.otdEstimate.expectedOTD)
+  const [otdAssumptions, setOtdAssumptions] = useState(dealPlan.otdEstimate?.assumptions || {
+    taxRate: { range: { low: 0, high: 0 } },
+    docFee: { range: { low: 0, high: 0 } },
+    registrationTitle: { range: { low: 0, high: 0 } },
+    dealerAddOns: { value: 0, riskBand: { low: 0, high: 0 } },
+  })
+  const [recalculatedOTD, setRecalculatedOTD] = useState(dealPlan.otdEstimate?.expectedOTD || {
+    low: 0,
+    expected: 0,
+    high: 0,
+  })
   
   // Fee inputs for desired OTD calculation
   const [showFeeInputs, setShowFeeInputs] = useState(false)
@@ -1629,9 +1638,12 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
     
     // Set tax rate (use value if available, otherwise use midpoint of range)
     const taxRateValue = dealPlan.otdEstimate?.assumptions?.taxRate?.value
+    const taxRateRange = dealPlan.otdEstimate?.assumptions?.taxRate?.range
     const taxRate = taxRateValue 
       ? taxRateValue.toString() 
-      : ((dealPlan.otdEstimate.assumptions.taxRate.range.low + dealPlan.otdEstimate.assumptions.taxRate.range.high) / 2).toFixed(2)
+      : taxRateRange
+        ? ((taxRateRange.low + taxRateRange.high) / 2).toFixed(2)
+        : '0'
     if (taxRate) {
       localStorage.setItem('otd_builder_tax_rate', taxRate)
       console.log('OTD Builder: Setting tax rate:', taxRate)
@@ -2128,10 +2140,15 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             <strong>⚠️ Validation Required:</strong> This OTD estimate includes tax based on estimated rates. Tax rates are estimates only and may vary by state, locality, and vehicle type. Always verify the actual tax rate and final OTD price with your dealer before finalizing your purchase.
           </div>
 
-          {(() => {
+          {dealPlan.otdEstimate && (() => {
             const { parseMoney } = require('@/lib/utils/number-parsing')
-            const expectedOTD = parseMoney(dealPlan.otdEstimate.expectedOTD.expected)
-            const threshold = parseMoney(dealPlan.otdEstimate.warningThreshold)
+            const expectedOTD = parseMoney(dealPlan.otdEstimate.expectedOTD?.expected)
+            const threshold = parseMoney(dealPlan.otdEstimate?.warningThreshold)
+            
+            if (!expectedOTD || !threshold) {
+              return null
+            }
+            
             const thresholdMin = expectedOTD * 0.7
             const thresholdMax = expectedOTD * 1.3
             const isValid = threshold >= thresholdMin && threshold <= thresholdMax
@@ -2156,14 +2173,16 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             )
           })()}
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-sm font-medium text-gray-900 mb-2">Checklist:</p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-              {dealPlan.otdEstimate.checklist.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
+          {dealPlan.otdEstimate?.checklist && dealPlan.otdEstimate.checklist.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-gray-900 mb-2">Checklist:</p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                {dealPlan.otdEstimate.checklist.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Card>
 
         {/* 3.5. First-Time Buyer Pack: Hidden Costs & Price Exclusions */}
@@ -2852,10 +2871,10 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                 }
                 
                 // OTD leverage
-                if (hasOTD && dealPlan.otdEstimate.expectedOTD) {
+                if (hasOTD && dealPlan.otdEstimate?.expectedOTD) {
                   const expectedOTDValue = typeof dealPlan.otdEstimate.expectedOTD === 'number' 
                     ? dealPlan.otdEstimate.expectedOTD 
-                    : dealPlan.otdEstimate.expectedOTD.expected
+                    : dealPlan.otdEstimate.expectedOTD?.expected
                   verbalLeverage.push({
                     situation: 'When they avoid giving OTD price',
                     phrase: `"I need to see the full out-the-door price, including all fees and taxes. My target is $${expectedOTDValue.toLocaleString()} OTD."`,
@@ -2976,10 +2995,10 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               {(() => {
                 const talkTracks = []
                 const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
-                const expectedOTDValue = hasOTD && dealPlan.otdEstimate.expectedOTD
+                const expectedOTDValue = hasOTD && dealPlan.otdEstimate?.expectedOTD
                   ? (typeof dealPlan.otdEstimate.expectedOTD === 'number' 
                       ? dealPlan.otdEstimate.expectedOTD 
-                      : dealPlan.otdEstimate.expectedOTD.expected)
+                      : dealPlan.otdEstimate.expectedOTD?.expected)
                   : null
                 const fairPrice = dealPlan.targets.estimatedFairPrice
                 const askingPrice = dealPlan.targets.askingPrice
