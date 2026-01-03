@@ -6,7 +6,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
 import Button from './ui/Button'
 import Card from './ui/Card'
-import { Copy, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { Link as LinkIcon, FileText, PenTool } from 'lucide-react'
+import DealPlanDisplay from './DealPlanDisplay'
+import ListingReviewStep from './ListingReviewStep'
+import type { DealPlan } from '@/lib/types/api'
+import type { ListingData } from '@/lib/types/listing'
 
 interface ResearchPageContentProps {
   mode?: 'free' | 'first-time' | 'in-person'
@@ -14,14 +18,24 @@ interface ResearchPageContentProps {
 
 const supabase = createBrowserSupabaseClient()
 
+type EntryMethod = 'url' | 'paste' | 'manual'
+
 export default function ResearchPageContent({ mode = 'free' }: ResearchPageContentProps) {
   const { user } = useAuth()
   const searchParams = useSearchParams()
+  const [entryMethod, setEntryMethod] = useState<EntryMethod>('url')
   const [listingUrl, setListingUrl] = useState('')
+  const [pasteText, setPasteText] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const [analysisResult, setAnalysisResult] = useState<DealPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [showReviewStep, setShowReviewStep] = useState(false)
+  const [reviewListingData, setReviewListingData] = useState<Partial<ListingData> | null>(null)
+  const [reviewBlocked, setReviewBlocked] = useState(false)
+  const [diagnostics, setDiagnostics] = useState<any>(null)
+
+  // Map mode to variant for DealPlanDisplay
+  const variant = mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
 
   // Load saved analysis from localStorage on mount
   useEffect(() => {
@@ -58,36 +72,94 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
     }
   }, [analysisResult, listingUrl, mode])
 
-  // Guardrail messages for First-Time Buyer pack
-  const guardrailMessages = [
-    {
-      title: 'Safe Opener',
-      message: 'Hi, I\'m interested in this vehicle. Could you please send me a written itemized breakdown of the out-the-door price? I\'d like to see the sale price, taxes, doc fee, title/registration fees, and any add-ons all on one sheet. Thank you!',
-    },
-    {
-      title: 'Clarify Add-ons',
-      message: 'Thank you for the breakdown. Could you clarify which items are optional versus mandatory? If any add-ons are required, I\'d like to see the buyer\'s order or OTD worksheet in writing before we proceed. I want to make sure I understand the total cost clearly.',
-    },
-    {
-      title: 'Disengage/Pause',
-      message: 'Thank you for the information. I\'d like to review everything in writing and will follow up once I\'ve had a chance to go through the details. I appreciate your patience.',
-    },
-  ]
+  const handleAnalyze = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    
+    setAnalyzing(true)
+    setError(null)
+    setShowReviewStep(false)
+    setReviewListingData(null)
 
-  const handleCopy = async (text: string, index: number) => {
     try {
-      await navigator.clipboard.writeText(text)
-      setCopiedIndex(index)
-      setTimeout(() => setCopiedIndex(null), 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      // Determine the input based on entry method
+      let requestBody: any = {
+        packVariant: mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
+      }
+
+      if (entryMethod === 'url') {
+        if (!listingUrl.trim()) {
+          setError('Please enter a listing URL')
+          setAnalyzing(false)
+          return
+        }
+        requestBody.listingUrl = listingUrl.trim()
+      } else if (entryMethod === 'paste') {
+        if (!pasteText.trim()) {
+          setError('Please paste listing details')
+          setAnalyzing(false)
+          return
+        }
+        requestBody.listingUrl = pasteText.trim()
+      } else if (entryMethod === 'manual') {
+        // Manual entry - use a special URL format
+        requestBody.listingUrl = 'manual://entry'
+        requestBody.confirmedData = {
+          // Will be filled by user in review step if needed
+        }
+      }
+
+      const response = await fetch('/api/analyze-listing', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw new Error(`Analysis failed: HTTP ${response.status}. ${text.slice(0, 300)}`)
+      }
+
+      const data = await response.json()
+
+      if (!data?.success) {
+        // Check if we need to show review step
+        if (data?.requiresUserInput && data?.extractedListing) {
+          setReviewListingData(data.extractedListing)
+          setReviewBlocked(data.extractedListing.blocked || false)
+          setShowReviewStep(true)
+          setDiagnostics(data.diagnostics)
+          setAnalyzing(false)
+          return
+        }
+        throw new Error(data?.error || 'Failed to analyze listing')
+      }
+
+      // Success - we have a deal plan
+      if (data.data?.dealPlan) {
+        setAnalysisResult(data.data.dealPlan)
+        setDiagnostics(data.data.diagnostics)
+      } else if (data.dealPlan) {
+        setAnalysisResult(data.dealPlan)
+        setDiagnostics(data.diagnostics)
+      } else {
+        setAnalysisResult(data.data || data)
+      }
+      
+      setAnalyzing(false)
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze listing')
+      setAnalyzing(false)
     }
   }
 
-  const handleAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!listingUrl.trim()) return
-
+  const handleReviewConfirm = async (confirmedData: Partial<ListingData>) => {
+    setShowReviewStep(false)
     setAnalyzing(true)
     setError(null)
 
@@ -101,9 +173,10 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
       const response = await fetch('/api/analyze-listing', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ 
-          listingUrl,
-          packVariant: mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
+        body: JSON.stringify({
+          listingUrl: listingUrl || pasteText || 'manual://entry',
+          packVariant: mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free',
+          confirmedData,
         }),
       })
 
@@ -118,7 +191,16 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
         throw new Error(data?.error || 'Failed to analyze listing')
       }
 
-      setAnalysisResult(data.data || data)
+      if (data.data?.dealPlan) {
+        setAnalysisResult(data.data.dealPlan)
+        setDiagnostics(data.data.diagnostics)
+      } else if (data.dealPlan) {
+        setAnalysisResult(data.dealPlan)
+        setDiagnostics(data.diagnostics)
+      } else {
+        setAnalysisResult(data.data || data)
+      }
+      
       setAnalyzing(false)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze listing')
@@ -126,48 +208,25 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
     }
   }
 
-  // Determine readiness verdict based on analysis result
-  const getReadinessVerdict = () => {
-    if (!analysisResult) return null
-
-    // Check for confidence indicators
-    const confidence = analysisResult.confidence || analysisResult.diagnostics?.confidence
-    const hasPrice = analysisResult.price || analysisResult.askingPrice
-    const hasVehicleInfo = analysisResult.year && analysisResult.make && analysisResult.model
-    const hasIssues = analysisResult.issues && analysisResult.issues.length > 0
-    const isBlocked = analysisResult.blocked || analysisResult.diagnostics?.blocked
-
-    if (isBlocked || !hasPrice || !hasVehicleInfo) {
-      return {
-        status: 'not-ready',
-        icon: XCircle,
-        color: 'red',
-        title: 'Not Ready — Missing Critical Info',
-        message: 'We need more information to provide a complete assessment. Please use "Copy from Listing Page" or "Manual Entry" to provide vehicle details.',
-      }
-    }
-
-    if (hasIssues || (confidence !== undefined && confidence < 0.7)) {
-      return {
-        status: 'caution',
-        icon: AlertCircle,
-        color: 'yellow',
-        title: 'Proceed with Caution',
-        message: 'Some information may be incomplete or unclear. Review the details carefully before proceeding.',
-      }
-    }
-
-    return {
-      status: 'ready',
-      icon: CheckCircle2,
-      color: 'green',
-      title: 'Ready to Proceed',
-      message: 'You have the key information needed. Review the assessment below before contacting the dealer.',
-    }
+  const handleReviewCancel = () => {
+    setShowReviewStep(false)
+    setReviewListingData(null)
+    setReviewBlocked(false)
   }
 
-  const verdict = getReadinessVerdict()
-  const VerdictIcon = verdict?.icon || CheckCircle2
+  const handleAddToComparison = () => {
+    // Navigate to comparison page with pre-filled data
+    if (analysisResult && listingUrl) {
+      const vehicleInfo = (analysisResult as any).vehicleInfo || {}
+      const link = {
+        url: listingUrl,
+        price: analysisResult.targets?.askingPrice || 0,
+        vehicle: `${vehicleInfo.year || ''} ${vehicleInfo.make || ''} ${vehicleInfo.model || ''}`.trim(),
+      }
+      localStorage.setItem('comparison_prefill', JSON.stringify(link))
+      window.location.href = '/research?tab=compare'
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -176,11 +235,16 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
         {mode === 'first-time' ? (
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Deal Readiness / Confidence Assessment
+              Deal Readiness Assessment
             </h1>
             <p className="text-lg text-gray-600">
               Expert review before you contact the dealer
             </p>
+          </div>
+        ) : mode === 'in-person' ? (
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Listing Analyzer</h1>
+            <p className="text-lg text-gray-600">Analyze vehicle listings and prepare for in-person negotiation</p>
           </div>
         ) : (
           <div className="mb-8">
@@ -189,28 +253,119 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
           </div>
         )}
 
-        {/* Input Form */}
-        <Card className="mb-8 p-6">
-          <form onSubmit={handleAnalyze} className="space-y-4">
-            <div>
-              <label htmlFor="listing-url" className="block text-sm font-medium text-gray-700 mb-2">
-                Listing URL
-              </label>
-              <input
-                id="listing-url"
-                type="url"
-                value={listingUrl}
-                onChange={(e) => setListingUrl(e.target.value)}
-                placeholder="Paste vehicle listing URL here..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
+        {/* Entry Method Selection */}
+        {!analysisResult && !showReviewStep && (
+          <Card className="mb-8 p-6">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Choose how to enter listing</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setEntryMethod('url')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    entryMethod === 'url'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <LinkIcon className={`w-6 h-6 mb-2 ${entryMethod === 'url' ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <h3 className="font-semibold text-gray-900 mb-1">Paste Listing URL</h3>
+                  <p className="text-sm text-gray-600">Paste the URL from the dealer listing page</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEntryMethod('paste')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    entryMethod === 'paste'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <FileText className={`w-6 h-6 mb-2 ${entryMethod === 'paste' ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <h3 className="font-semibold text-gray-900 mb-1">Copy from Listing Page</h3>
+                  <p className="text-sm text-gray-600">Copy and paste listing details from the page</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEntryMethod('manual')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    entryMethod === 'manual'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <PenTool className={`w-6 h-6 mb-2 ${entryMethod === 'manual' ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <h3 className="font-semibold text-gray-900 mb-1">Manual Entry</h3>
+                  <p className="text-sm text-gray-600">Enter vehicle details manually</p>
+                </button>
+              </div>
             </div>
-            <Button type="submit" disabled={analyzing || !listingUrl.trim()}>
-              {analyzing ? 'Analyzing...' : 'Analyze Listing'}
-            </Button>
-          </form>
-        </Card>
+
+            {/* Entry Form Based on Selected Method */}
+            <form onSubmit={handleAnalyze} className="space-y-4">
+              {entryMethod === 'url' && (
+                <div>
+                  <label htmlFor="listing-url" className="block text-sm font-medium text-gray-700 mb-2">
+                    Listing URL
+                  </label>
+                  <input
+                    id="listing-url"
+                    type="url"
+                    value={listingUrl}
+                    onChange={(e) => setListingUrl(e.target.value)}
+                    placeholder="Paste vehicle listing URL here..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+              )}
+
+              {entryMethod === 'paste' && (
+                <div>
+                  <label htmlFor="paste-text" className="block text-sm font-medium text-gray-700 mb-2">
+                    Paste Listing Details
+                  </label>
+                  <textarea
+                    id="paste-text"
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder="Paste listing details here (price, year, make, model, mileage, dealer, location, etc.)..."
+                    rows={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                    required
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Tip: Select all (Ctrl+A / Cmd+A) on the listing page, then copy and paste here
+                  </p>
+                </div>
+              )}
+
+              {entryMethod === 'manual' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 mb-2">
+                    Click "Analyze Listing" to start manual entry. You'll be able to enter vehicle details in the next step.
+                  </p>
+                </div>
+              )}
+
+              <Button type="submit" disabled={analyzing || (entryMethod === 'url' && !listingUrl.trim()) || (entryMethod === 'paste' && !pasteText.trim())}>
+                {analyzing ? 'Analyzing...' : 'Analyze Listing'}
+              </Button>
+            </form>
+          </Card>
+        )}
+
+        {/* Review Step */}
+        {showReviewStep && reviewListingData && (
+          <ListingReviewStep
+            listingData={reviewListingData}
+            onConfirm={handleReviewConfirm}
+            onCancel={handleReviewCancel}
+            blocked={reviewBlocked}
+          />
+        )}
 
         {/* Error Display */}
         {error && (
@@ -219,126 +374,17 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
           </Card>
         )}
 
-        {/* Analysis Results */}
-        {analysisResult && (
-          <div className="space-y-6">
-            {/* Readiness Verdict - Only for First-Time Buyer */}
-            {mode === 'first-time' && verdict && (
-              <Card className={`p-6 ${
-                verdict.color === 'red' ? 'bg-red-50 border-red-200' :
-                verdict.color === 'yellow' ? 'bg-yellow-50 border-yellow-200' :
-                'bg-green-50 border-green-200'
-              }`}>
-                <div className="flex items-start gap-4">
-                  <VerdictIcon className={`w-6 h-6 flex-shrink-0 mt-1 ${
-                    verdict.color === 'red' ? 'text-red-600' :
-                    verdict.color === 'yellow' ? 'text-yellow-600' :
-                    'text-green-600'
-                  }`} />
-                  <div>
-                    <h2 className={`text-xl font-bold mb-2 ${
-                      verdict.color === 'red' ? 'text-red-900' :
-                      verdict.color === 'yellow' ? 'text-yellow-900' :
-                      'text-green-900'
-                    }`}>
-                      {verdict.title}
-                    </h2>
-                    <p className={
-                      verdict.color === 'red' ? 'text-red-800' :
-                      verdict.color === 'yellow' ? 'text-yellow-800' :
-                      'text-green-800'
-                    }>{verdict.message}</p>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Deal Plan / Assessment Results */}
-            <Card className="p-6">
-              {mode === 'first-time' ? (
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Deal Readiness Assessment</h2>
-              ) : (
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Deal Plan</h2>
-              )}
-
-              {/* Display analysis results */}
-              <div className="space-y-4">
-                {analysisResult.price && (
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Asking Price: </span>
-                    <span className="text-lg font-bold text-gray-900">
-                      ${analysisResult.price.toLocaleString()}
-                    </span>
-                  </div>
-                )}
-
-                {analysisResult.year && analysisResult.make && analysisResult.model && (
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Vehicle: </span>
-                    <span className="text-lg font-semibold text-gray-900">
-                      {analysisResult.year} {analysisResult.make} {analysisResult.model}
-                    </span>
-                  </div>
-                )}
-
-                {analysisResult.otdEstimate && (
-                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-2">Estimated Out-the-Door Price</h3>
-                    <p className="text-2xl font-bold text-blue-900">
-                      ${analysisResult.otdEstimate.total?.toLocaleString() || 'N/A'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Additional analysis details can be displayed here */}
-              </div>
-            </Card>
-
-            {/* Guardrail Messages - Only for First-Time Buyer */}
-            {mode === 'first-time' && (
-              <Card className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  If you proceed, send this (written only)
-                </h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  Use these professional, beginner-safe messages when contacting the dealer. Copy and paste as needed.
-                </p>
-                <div className="space-y-4">
-                  {guardrailMessages.map((guardrail, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900">{guardrail.title}</h3>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleCopy(guardrail.message, index)}
-                          className="flex items-center gap-2"
-                        >
-                          {copiedIndex === index ? (
-                            <>
-                              <CheckCircle2 className="w-4 h-4" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              Copy
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {guardrail.message}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-          </div>
+        {/* Analysis Results - Use DealPlanDisplay */}
+        {analysisResult && !showReviewStep && (
+          <DealPlanDisplay
+            dealPlan={analysisResult}
+            listingUrl={listingUrl || pasteText || 'manual://entry'}
+            onAddToComparison={handleAddToComparison}
+            diagnostics={diagnostics}
+            variant={variant}
+          />
         )}
       </div>
     </div>
   )
 }
-
