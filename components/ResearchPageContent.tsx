@@ -565,6 +565,9 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
                         placeholder="e.g., EX-L"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Used for future comparison features (coming soon).
+                      </p>
                     </div>
 
                     <div>
@@ -676,13 +679,27 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
 
         {/* Analysis Results - Use DealPlanDisplay */}
         {analysisResult && !showReviewStep && (
-          <DealPlanDisplay
-            dealPlan={analysisResult}
-            listingUrl={listingUrl || pasteText || 'manual://entry'}
-            onAddToComparison={handleAddToComparison}
-            diagnostics={diagnostics}
-            variant={variant}
-          />
+          <>
+            <DealPlanDisplay
+              dealPlan={analysisResult}
+              listingUrl={listingUrl || pasteText || 'manual://entry'}
+              onAddToComparison={handleAddToComparison}
+              diagnostics={diagnostics}
+              variant={variant}
+            />
+            
+            {/* Post-analysis Disclaimer */}
+            <Card className="mt-8 p-6 bg-blue-50 border-blue-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">How DealWise evaluates listings</h3>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                DealWise estimates fair price and out-the-door (OTD) ranges using typical market patterns,
+                common dealer fees, and buyer-reported outcomes.
+                These estimates help flag potential overpricing, inflated fees, or risky deals.
+                Vehicle-to-vehicle price comparisons based on year, trim, mileage, and market availability
+                are coming soon.
+              </p>
+            </Card>
+          </>
         )}
       </div>
     </div>

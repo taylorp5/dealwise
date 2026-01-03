@@ -50,12 +50,13 @@ const PACK_PRICES: Record<string, number> = {
 export default function PacksPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const { loading: entitlementsLoading, hasFirstTime, hasInPerson, hasBundle, refreshEntitlements } = useEntitlements()
+  const { loading: entitlementsLoading, hasFirstTime, hasInPerson, hasBundle, refreshEntitlements, entitlements } = useEntitlements()
   const [loading, setLoading] = useState(true)
   const [userPacks, setUserPacks] = useState<PackStatus[]>([])
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const isDev = process.env.NODE_ENV === 'development'
 
   useEffect(() => {
     fetchPacks()
@@ -85,6 +86,39 @@ export default function PacksPage() {
     }
   }, [refreshEntitlements])
 
+  // Debug logging (dev-only)
+  useEffect(() => {
+    if (isDev && user) {
+      console.log('[Entitlements Debug]', {
+        user_id: user.id,
+        entitlements,
+        hasFirstTime,
+        hasInPerson,
+        hasBundle,
+        loading: entitlementsLoading,
+      })
+    }
+  }, [isDev, user, entitlements, hasFirstTime, hasInPerson, hasBundle, entitlementsLoading])
+
+  const handleRestorePurchases = async () => {
+    if (!user) {
+      alert('Please sign in to restore purchases')
+      return
+    }
+    
+    try {
+      setLoading(true)
+      await refreshEntitlements()
+      await fetchPacks(false)
+      alert('Purchases restored! Your entitlements have been refreshed from the database.')
+    } catch (error) {
+      console.error('Error restoring purchases:', error)
+      alert('Failed to restore purchases. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const fetchPacks = async (showLoading = true) => {
     if (showLoading) setLoading(true)
     try {
@@ -103,13 +137,7 @@ export default function PacksPage() {
       
       // Note: We no longer use selected_pack_id in localStorage for analyzer variants
       // Analyzer variants are determined by route, not localStorage
-      
-      // Sync database unlocks to localStorage
-      const { addPack } = await import('@/lib/packs/entitlements')
-      const unlockedPacks = (data.userPacks || []).filter((p) => p.isUnlocked).map((p) => p.packId)
-      unlockedPacks.forEach((packId) => {
-        addPack(packId)
-      })
+      // Entitlements are now read from Supabase via useEntitlements hook, not localStorage
     } catch (err: any) {
       // Silently handle errors - don't show raw error messages
       console.error('Error loading packs:', err)
@@ -572,6 +600,42 @@ export default function PacksPage() {
                   No charges were made. You can try again anytime.
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dev-only: Restore Purchases Button */}
+        {isDev && user && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900 mb-1">
+                    🔧 Dev Tools: Restore Purchases
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Refetch entitlements from Supabase database
+                  </p>
+                </div>
+                <Button
+                  onClick={handleRestorePurchases}
+                  disabled={loading || entitlementsLoading}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Restore Purchases
+                </Button>
+              </div>
+              {isDev && (
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <p className="text-xs font-mono text-blue-800 mb-1">
+                    <strong>Debug Info:</strong>
+                  </p>
+                  <pre className="text-xs text-blue-700 overflow-auto">
+                    {JSON.stringify({ user_id: user.id, entitlements, hasFirstTime, hasInPerson, hasBundle }, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
         )}

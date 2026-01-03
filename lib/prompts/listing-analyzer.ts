@@ -192,25 +192,38 @@ IMPORTANT: The URL structure itself may contain valuable information:
 - Location/state may be in the URL path
 - Dealer name may be in the URL structure
 
+V1 ANALYSIS APPROACH:
+This is Version 1 of the Listing Analyzer. The analysis is based on:
+- Typical market heuristics and common dealer pricing patterns
+- Estimated fee and tax behavior (using provided tax rate assumptions)
+- Standard negotiation ranges for similar vehicle types
+- Common dealer tactics and buyer leverage factors
+
+IMPORTANT LIMITATIONS:
+- Vehicle attributes like trim and condition do NOT materially alter the analysis in V1
+- We are NOT performing deep vehicle-to-vehicle price comparisons yet
+- Fair price estimates use market heuristics, not actual comparable listings
+- Trim-specific pricing adjustments are coming in V2
+
 TASK:
 1. FIRST: Use the extracted data provided above if available. This data was parsed from the URL structure.
 2. SECOND: If data is missing, carefully analyze the URL structure yourself to extract any additional vehicle information (year, make, model, price, mileage, location, state)
 3. Extract or estimate the asking price - PRIORITIZE the extracted price if provided, otherwise analyze the URL
-3. Compute exact targets:
-   - Estimated Fair Price (midpoint if comps exist, or asking - 3% if not)
-   - Strong Opening Offer (fair - 2-4% if comps exist, or asking - 6% if not)
-   - Acceptable Deal Price (fair - 0-2% if comps exist, or asking - 4% if not)
-   - Walk-Away OTD Ceiling (expected OTD + 5-10%)
-4. Assess leverage (4-8 factors with 0-100 scores):
-   - Position in comp range
-   - Mileage vs comps (use extracted mileage if available)
-   - Trim rarity (if available from URL/model info)
-   - Dealer type (if known from URL)
-   - Price volatility (if price drops visible)
-   - Missing info (CARFAX, accident history)
+3. Compute exact targets using V1 heuristics (NOT deep comps):
+   - Estimated Fair Price: Use asking price - 3% as baseline (typical market adjustment)
+   - Strong Opening Offer: Fair price - 2-4% (or asking - 6% if no fair price baseline)
+   - Acceptable Deal Price: Fair price - 0-2% (or asking - 4% if no fair price baseline)
+   - Walk-Away OTD Ceiling: Expected OTD + 5-10% buffer
+4. Assess leverage (4-8 factors with 0-100 scores) using general patterns:
+   - Price position (high/medium/low based on typical ranges for vehicle type)
+   - Mileage assessment (use extracted mileage if available, compare to typical ranges)
+   - Dealer type indicators (if known from URL or listing data)
+   - Price volatility signals (if visible in listing)
+   - Missing info flags (CARFAX, accident history mentions)
+   - NOTE: Trim rarity is NOT a leverage factor in V1 (coming in V2)
 5. Calculate OTD estimates using the tax rate assumptions provided by the backend (doc fee $299-$699, registration $200-$600, add-ons $0-$1,500 risk)
    - Tax rate will be provided in the assumptions - do not estimate or guess tax rates
-6. Predict 4-6 likely dealer tactics with counter-scripts
+6. Predict 4-6 likely dealer tactics with counter-scripts (based on common patterns)
 7. Generate 3 ready-to-send scripts with actual dollar amounts:
    - Initial email/text requesting itemized OTD
    - First counter offer (includes Opening Offer and OTD ceiling)
@@ -220,8 +233,8 @@ TASK:
 
 If you cannot extract specific numbers from the URL, use reasonable estimates based on:
 - Typical pricing for the vehicle type (if make/model known)
-- Market conditions
-- Standard negotiation ranges
+- Market conditions and standard negotiation ranges
+- Common dealer pricing patterns
 
 Return ONLY valid JSON matching the DealPlan structure.`
 }

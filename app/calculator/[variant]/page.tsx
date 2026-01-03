@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import CalculatorPage from '@/components/CalculatorPage'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 
 // Map URL variant to internal variant format
 function mapVariantFromUrl(urlVariant: string | string[] | undefined): 'free' | 'first_time' | 'in_person' {
@@ -25,24 +25,25 @@ export default function VariantCalculatorPage() {
   const router = useRouter()
   const urlVariant = params?.variant
   const initialVariant = mapVariantFromUrl(urlVariant)
+  const { hasFirstTime, hasInPerson, loading } = useEntitlements()
 
   // Route guarding: Check entitlements for paid routes
   useEffect(() => {
+    if (loading) return // Wait for entitlements to load
+    
     if (initialVariant === 'first_time') {
-      const hasFirstTimeEntitlement = hasPack('first_time') || hasAllAccess()
-      if (!hasFirstTimeEntitlement) {
+      if (!hasFirstTime) {
         // Redirect to packs page if no entitlement
         router.replace('/packs')
       }
     } else if (initialVariant === 'in_person') {
-      const hasInPersonEntitlement = hasPack('in_person') || hasAllAccess()
-      if (!hasInPersonEntitlement) {
+      if (!hasInPerson) {
         // Redirect to packs page if no entitlement
         router.replace('/packs')
       }
     }
     // Free variant is always accessible, no check needed
-  }, [initialVariant, router])
+  }, [initialVariant, router, hasFirstTime, hasInPerson, loading])
 
   return <CalculatorPage initialVariant={initialVariant} />
 }

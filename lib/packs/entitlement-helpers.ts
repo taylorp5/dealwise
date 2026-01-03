@@ -1,9 +1,8 @@
 /**
  * Entitlement Helpers
- * Single source of truth for pack entitlement checking
+ * Helper functions for pack entitlement checking
+ * NOTE: For actual entitlement checks, use the useEntitlements hook which reads from Supabase
  */
-
-import { hasPack, hasAllAccess, getOwnedPacks } from './entitlements'
 
 export interface PackEntitlements {
   hasFirstTimePack: boolean
@@ -13,18 +12,19 @@ export interface PackEntitlements {
 }
 
 /**
+ * @deprecated Use useEntitlements hook instead. This function is kept for backward compatibility.
  * Get all pack entitlements for the current user
- * This is the single source of truth for pack checking
+ * This function should not be used - use useEntitlements hook which reads from Supabase
  */
 export function getPackEntitlements(): PackEntitlements {
-  const ownedPacks = getOwnedPacks()
-  const allAccess = hasAllAccess()
-  
+  // Return empty entitlements - this function should not be used
+  // Components should use useEntitlements hook instead
+  console.warn('getPackEntitlements() is deprecated. Use useEntitlements hook instead.')
   return {
-    hasFirstTimePack: hasPack('first_time') || allAccess,
-    hasInPersonPack: hasPack('in_person') || allAccess,
-    ownedPacks,
-    allAccess,
+    hasFirstTimePack: false,
+    hasInPersonPack: false,
+    ownedPacks: [],
+    allAccess: false,
   }
 }
 
@@ -49,15 +49,15 @@ export function getAnalyzerRouteForPack(packId: string | null | undefined): stri
 /**
  * Get the analyzer route based on user's entitlements
  * Prioritizes In-Person > First-Time > Free
+ * @param hasInPerson - Whether user has in-person pack (from useEntitlements hook)
+ * @param hasFirstTime - Whether user has first-time pack (from useEntitlements hook)
  */
-export function getAnalyzerRouteFromEntitlements(): string {
-  const entitlements = getPackEntitlements()
-  
-  if (entitlements.hasInPersonPack) {
+export function getAnalyzerRouteFromEntitlements(hasInPerson: boolean = false, hasFirstTime: boolean = false): string {
+  if (hasInPerson) {
     return '/analyzer/in-person'
   }
   
-  if (entitlements.hasFirstTimePack) {
+  if (hasFirstTime) {
     return '/analyzer/first-time'
   }
   

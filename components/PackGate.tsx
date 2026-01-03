@@ -4,7 +4,7 @@ import { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Card from './ui/Card'
 import Button from './ui/Button'
-import { hasPack, hasAllAccess } from '@/lib/packs/entitlements'
+import { useEntitlements } from '@/hooks/useEntitlements'
 import { packs as packConfigs } from '@/lib/packs/config'
 
 interface PackGateProps {
@@ -17,7 +17,16 @@ interface PackGateProps {
 export default function PackGate({ packId, children, fallback, showUpgrade = true }: PackGateProps) {
   const router = useRouter()
   const packConfig = packConfigs[packId]
-  const isUnlocked = hasPack(packId) || hasAllAccess()
+  const { hasFirstTime, hasInPerson, hasBundle, loading } = useEntitlements()
+  
+  // Determine if pack is unlocked based on Supabase entitlements
+  const isUnlocked = (() => {
+    if (loading) return false // Don't show content while loading
+    if (packId === 'first_time') return hasFirstTime
+    if (packId === 'in_person') return hasInPerson
+    if (packId === 'bundle' || packId === 'bundle_both') return hasBundle || (hasFirstTime && hasInPerson)
+    return false
+  })()
 
   if (isUnlocked) {
     return <>{children}</>

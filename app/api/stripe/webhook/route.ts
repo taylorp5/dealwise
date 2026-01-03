@@ -78,10 +78,31 @@ export async function POST(request: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session
 
     try {
+      // Create Supabase admin client
+      const supabase = getSupabaseAdmin()
+
+      // IDEMPOTENCY CHECK: Check if this event has already been processed
+      const { data: existingEvent } = await supabase
+        .from('webhook_events')
+        .select('id, processed_at')
+        .eq('stripe_event_id', event.id)
+        .single()
+
+      if (existingEvent) {
+        console.log(`[Webhook] Event ${event.id} already processed at ${existingEvent.processed_at}. Skipping.`)
+        return NextResponse.json({ 
+          received: true, 
+          message: 'Event already processed',
+          processed_at: existingEvent.processed_at 
+        })
+      }
+
       // Extract user_id from client_reference_id OR metadata.user_id
       const userId = session.client_reference_id || session.metadata?.user_id
       const packKey = session.metadata?.pack_key
       const sessionId = session.id
+      const customerId = session.customer as string | null
+      const paymentIntentId = session.payment_intent as string | null
 
       if (!userId) {
         console.error('[Webhook] Missing user_id in client_reference_id and metadata:', { sessionId })
@@ -121,13 +142,17 @@ export async function POST(request: NextRequest) {
 
       console.log(`[Webhook] Processing checkout.session.completed for user ${userId}, pack ${purchasedPackKey}, session ${sessionId}`)
 
-      // Create Supabase admin client
-      const supabase = getSupabaseAdmin()
+      // Get existing entitlements to preserve them (OR logic)
+      const { data: existingEntitlements } = await supabase
+        .from('user_entitlements')
+        .select('first_time, in_person, bundle')
+        .eq('user_id', userId)
+        .single()
 
-      // Map pack_key to entitlement flags
-      let firstTime = false
-      let inPerson = false
-      let bundle = false
+      // Map pack_key to entitlement flags (OR with existing)
+      let firstTime = existingEntitlements?.first_time || false
+      let inPerson = existingEntitlements?.in_person || false
+      let bundle = existingEntitlements?.bundle || false
 
       if (purchasedPackKey === 'first_time') {
         firstTime = true
@@ -140,7 +165,7 @@ export async function POST(request: NextRequest) {
         inPerson = true
       }
 
-      // Upsert entitlements (set flags true, keep existing trues)
+      // Upsert entitlements with Stripe metadata
       const { error: upsertError } = await supabase
         .from('user_entitlements')
         .upsert(
@@ -149,6 +174,9 @@ export async function POST(request: NextRequest) {
             first_time: firstTime,
             in_person: inPerson,
             bundle: bundle,
+            stripe_customer_id: customerId,
+            stripe_payment_intent_id: paymentIntentId,
+            checkout_session_id: sessionId,
             updated_at: new Date().toISOString(),
           },
           {
@@ -161,10 +189,10 @@ export async function POST(request: NextRequest) {
         
         // Provide helpful error message if table doesn't exist
         if (upsertError.message?.includes('does not exist') || upsertError.message?.includes('schema cache')) {
-          console.error('[Webhook] Table user_entitlements does not exist. Please run the migration: supabase/migrations/001_user_entitlements.sql')
+          console.error('[Webhook] Table user_entitlements does not exist. Please run the migration: supabase/migrations/003_entitlements_persistence.sql')
           return NextResponse.json(
             { 
-              error: 'Database table not found. Please create user_entitlements table. See docs/QUICK_SETUP_USER_ENTITLEMENTS.md',
+              error: 'Database table not found. Please run migration 003_entitlements_persistence.sql',
               details: upsertError.message 
             },
             { status: 500 }
@@ -174,12 +202,27 @@ export async function POST(request: NextRequest) {
         throw upsertError
       }
 
+      // Record webhook event for idempotency
+      const { error: eventError } = await supabase
+        .from('webhook_events')
+        .insert({
+          stripe_event_id: event.id,
+          event_type: event.type,
+          checkout_session_id: sessionId,
+          user_id: userId,
+          payload: event.data.object as any,
+        })
+
+      if (eventError) {
+        // Log but don't fail - entitlements were already updated
+        console.error('[Webhook] Error recording webhook event (non-fatal):', eventError)
+      }
+
       console.log(`[Webhook] Successfully updated entitlements for user ${userId}: first_time=${firstTime}, in_person=${inPerson}, bundle=${bundle}`)
       return NextResponse.json({ received: true })
     } catch (error: any) {
       console.error('[Webhook] Error processing checkout.session.completed:', error)
-      // Return 200 to prevent Stripe from retrying (we'll handle manually if needed)
-      // Or return 500 if you want Stripe to retry
+      // Return 500 so Stripe will retry (idempotency check will prevent duplicates)
       return NextResponse.json(
         { error: 'Error processing webhook', message: error.message },
         { status: 500 }

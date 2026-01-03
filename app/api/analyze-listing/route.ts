@@ -239,6 +239,60 @@ export async function POST(request: NextRequest) {
             location: extractedListing.dealerCity ? `${extractedListing.dealerCity}, ${extractedListing.dealerState}` : undefined,
           }
           
+          // For Cars.com URLs, validate that we have required fields
+          // Required: price, year/make/model (at least year+make or year+model), mileage
+          const isCarsCom = extractedListing.sourceSite === 'cars.com'
+          if (isCarsCom && !body.confirmedData) {
+            const hasPrice = !!listingData.price
+            const hasYear = !!listingData.year
+            const hasMake = !!listingData.make
+            const hasModel = !!listingData.model
+            const hasMileage = !!listingData.mileage
+            const hasBasicVehicleInfo = hasYear && (hasMake || hasModel) // At least year + one of make/model
+            
+            // If missing critical fields, require manual entry
+            if (!hasPrice || !hasBasicVehicleInfo || !hasMileage) {
+              const missingFields: string[] = []
+              if (!hasPrice) missingFields.push('price')
+              if (!hasYear) missingFields.push('year')
+              if (!hasMake && !hasModel) missingFields.push('make/model')
+              if (!hasMileage) missingFields.push('mileage')
+              
+              extractedListing.issues = [
+                ...(extractedListing.issues || []),
+                `Missing required fields: ${missingFields.join(', ')}. Please complete manually.`
+              ]
+              extractedListing.confidence = Math.min(extractedListing.confidence || 0, 0.3) // Lower confidence
+              
+              // Return early to prompt for manual entry
+              const normalizedExtraction: ListingData = extractedListing
+              const fetchInfo = (extractedListing as any)?.fetchInfo || {}
+              const extractionDiagnostics: any = {
+                sourceUrl: url,
+                finalUrl: fetchInfo?.finalUrl || url,
+                pageTitle: fetchInfo?.pageTitle ?? null,
+                fetchStatus: fetchInfo?.fetchStatus ?? fetchInfo?.status ?? -1,
+                blocked: false,
+                platformDetected: 'cars.com',
+                extractionStrategyUsed: extractedListing.raw?.strategies?.[0] || 'unknown',
+                confidence: extractedListing.confidence || 0,
+                issues: extractedListing.issues || [],
+                priceCandidates: (extractedListing.raw?.priceCandidates || []).slice(0, 5),
+                mileageCandidates: (extractedListing.raw?.mileageCandidates || []).slice(0, 5),
+              }
+              
+              return NextResponse.json({
+                success: true,
+                requiresUserInput: true,
+                data: null,
+                dealPlan: null,
+                extractionResult: normalizedExtraction,
+                diagnostics: extractionDiagnostics,
+                extractedListing: normalizedExtraction,
+              })
+            }
+          }
+          
           // Build diagnostics object - preserve real fetch error info
           const diagnostics = {
             sourceUrl: url,
