@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST='{"app\\\\packs\\\\page.tsx -> @/lib/packs/entitlements":{"id":7116,"files":["static/chunks/116.f51cef8c8dad10c4.js"]}}';
+self.__REACT_LOADABLE_MANIFEST='{"app\\\\packs\\\\page.tsx -> @/lib/packs/entitlements":{"id":7116,"files":["static/chunks/7116.1dc86ff4bc034678.js"]}}';

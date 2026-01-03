@@ -10,13 +10,13 @@ export default function AppFooter() {
           </p>
           <nav className="flex items-center space-x-6">
             <Link
-              href="#"
+              href="/privacy"
               className="text-sm text-brand-muted hover:text-brand-ink transition-colors"
             >
               Privacy
             </Link>
             <Link
-              href="#"
+              href="/terms"
               className="text-sm text-brand-muted hover:text-brand-ink transition-colors"
             >
               Terms
