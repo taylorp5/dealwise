@@ -241,7 +241,7 @@ export default function Home() {
             style={{ transitionDelay: '700ms' }}
           >
             <h2 className="text-2xl font-bold text-brand-ink mb-2">Continue where you left off</h2>
-            <p className="text-brand-muted/90">Pick up where you left off or start something new</p>
+            <p className="text-brand-muted/90">Coming Soon</p>
           </div>
           <div 
             className={`bg-white rounded-xl border border-zinc-200 p-8 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
@@ -251,9 +251,10 @@ export default function Home() {
               <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
                 <History className="w-8 h-8 text-accent" />
               </div>
-              <h3 className="text-lg font-semibold text-brand-ink mb-2">Ready to get started?</h3>
+              <h3 className="text-lg font-semibold text-brand-ink mb-2">Coming Soon</h3>
               <p className="text-sm text-brand-muted mb-6 max-w-md mx-auto">
-                Your recent negotiations and analyses will appear here. Start by analyzing a listing or using the Negotiation Draft Builder.
+                We're building a feature to help you track and review your past negotiations and analyses. 
+                In the meantime, start by analyzing a listing or using the Negotiation Draft Builder.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/copilot/free">
