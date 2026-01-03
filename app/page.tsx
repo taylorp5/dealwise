@@ -64,7 +64,7 @@ export default function Home() {
       icon: Scale,
       title: 'Offer Comparison',
       description: 'Compare multiple offers from different dealerships to find the best deal.',
-      href: '/research',
+      href: '/compare',
     },
     {
       icon: Library,

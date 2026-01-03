@@ -1661,9 +1661,8 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   }
 
   const handleOpenComparison = () => {
-    const link = dealPlan.nextMoves.comparisonLink
-    localStorage.setItem('comparison_prefill', JSON.stringify(link))
-    router.push('/research?tab=compare')
+    // Route to coming soon page for Offer Comparison
+    router.push('/compare')
   }
 
   // Pack checks - use server-side entitlements

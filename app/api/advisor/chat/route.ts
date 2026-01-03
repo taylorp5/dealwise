@@ -320,7 +320,7 @@ function getFeatureInfo(redirectTo?: string): { name: string; route: string; des
     case 'comparison':
       return {
         name: 'Offer Comparison',
-        route: '/research?tab=compare',
+        route: '/compare',
         description: 'compares multiple offers side-by-side to help you find the best deal',
       }
     case 'packs':
