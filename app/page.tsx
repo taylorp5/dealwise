@@ -41,8 +41,6 @@ export default function Home() {
       title: 'Negotiation Draft Builder',
       description: 'Get your single best next response, tailored to your situation. Generate responses or decode dealer messages.',
       href: '/copilot/free',
-      badge: 'Most used',
-      badgeColor: 'blue' as const,
       isRecommended: false,
     },
     {
@@ -50,6 +48,8 @@ export default function Home() {
       title: 'Listing Analyzer',
       description: 'Analyze car listings for price, market comparison, and red flags.',
       href: '/research',
+      badge: 'Most used',
+      badgeColor: 'blue' as const,
     },
     {
       icon: Receipt,
@@ -65,6 +65,8 @@ export default function Home() {
       title: 'Offer Comparison',
       description: 'Compare multiple offers from different dealerships to find the best deal.',
       href: '/compare',
+      badge: 'Coming soon',
+      badgeColor: 'amber' as const,
     },
     {
       icon: Library,
@@ -77,6 +79,8 @@ export default function Home() {
       title: 'Deal History',
       description: 'View your past negotiations and analyses.',
       href: '/history',
+      badge: 'Coming soon',
+      badgeColor: 'amber' as const,
     },
   ]
 
