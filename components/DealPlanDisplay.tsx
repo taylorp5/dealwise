@@ -1459,6 +1459,9 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   const [registrationFeeInput, setRegistrationFeeInput] = useState('')
   const [otherFeesInput, setOtherFeesInput] = useState('')
   const [calculatedDesiredOTD, setCalculatedDesiredOTD] = useState<number | null>(null)
+  
+  // Modal state for Dealer Simulator (coming soon)
+  const [showSimulatorModal, setShowSimulatorModal] = useState(false)
 
   // Recalculate OTD when assumptions change or on mount
   useEffect(() => {
@@ -2133,7 +2136,8 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             const thresholdMax = expectedOTD * 1.3
             const isValid = threshold >= thresholdMin && threshold <= thresholdMax
             
-            if (!isValid) {
+            // Hide inconsistent threshold warning for in-person variant (polish requirement)
+            if (!isValid && variant !== 'in_person') {
               return (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
                   <p className="text-sm text-yellow-800">
@@ -2917,6 +2921,26 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
           <div className="space-y-4">
             {dealPlan.tactics.map((tactic, i) => {
               const isLocked = tactic.pack && !hasPack(tactic.pack) && !hasAllAccess()
+              
+              // For in-person variant, make counters calm and realistic
+              let counterText = tactic.counter
+              if (variant === 'in_person') {
+                // Replace robotic language with calm, realistic responses
+                counterText = counterText
+                  .replace(/I will not accept/gi, 'My number is')
+                  .replace(/I refuse/gi, 'I\'ll pass if')
+                  .replace(/I demand/gi, 'I\'m looking for')
+                
+                // If counter doesn't already have a calm tone, add realistic framing
+                if (!counterText.includes('based on') && !counterText.includes('comps') && !counterText.includes('market')) {
+                  const askingPrice = dealPlan.targets.askingPrice
+                  const fairPrice = dealPlan.targets.estimatedFairPrice
+                  if (askingPrice > fairPrice) {
+                    counterText = `My number is $${fairPrice.toLocaleString()} based on comps. If we can't get close, I'll pass.`
+                  }
+                }
+              }
+              
               const content = (
                 <div className="border-l-4 border-blue-500 pl-4 py-2">
                   <div className="flex items-center gap-2 mb-2">
@@ -2929,7 +2953,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
                       {tactic.likelihood.toUpperCase()} Likelihood
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700"><strong>Counter:</strong> {tactic.counter}</p>
+                  <p className="text-sm text-gray-700"><strong>Counter:</strong> {counterText}</p>
                 </div>
               )
               return isLocked ? (
@@ -2943,36 +2967,109 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
           </div>
         </Card>
 
-        {/* 5. Ready-to-Send Scripts */}
-        <Card className="p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">5. Ready-to-Send Scripts</h3>
-          <div className="space-y-4">
-            {dealPlan.scripts.map((script, i) => {
-              const isLocked = script.pack && !hasPack(script.pack) && !hasAllAccess()
-              const content = (
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">{script.title}</p>
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{script.text}</p>
-                    <button
-                      onClick={() => handleCopyScript(script.text)}
-                      className="mt-2 text-xs text-blue-600 hover:text-blue-700"
-                    >
-                      📋 Copy
-                    </button>
+        {/* 5. Ready-to-Send Scripts (Free/FTB) OR Talk Track Cards (In-Person) */}
+        {variant === 'in_person' ? (
+          <Card className="p-6 mb-6 bg-orange-50 border-orange-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">5. Talk Track Cards</h3>
+            <p className="text-sm text-gray-600 mb-4">Short spoken phrases for in-person negotiations. Use these when the dealer tries common tactics.</p>
+            <div className="space-y-3">
+              {(() => {
+                const talkTracks = []
+                const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
+                const expectedOTDValue = hasOTD && dealPlan.otdEstimate.expectedOTD
+                  ? (typeof dealPlan.otdEstimate.expectedOTD === 'number' 
+                      ? dealPlan.otdEstimate.expectedOTD 
+                      : dealPlan.otdEstimate.expectedOTD.expected)
+                  : null
+                const fairPrice = dealPlan.targets.estimatedFairPrice
+                const askingPrice = dealPlan.targets.askingPrice
+                
+                // Scenario 1: Avoid OTD
+                talkTracks.push({
+                  scenario: 'When they avoid giving OTD price',
+                  phrase: expectedOTDValue 
+                    ? `"I need the full out-the-door price. My target is $${expectedOTDValue.toLocaleString()} OTD."`
+                    : '"I need the full out-the-door price in writing, including all fees and taxes."',
+                })
+                
+                // Scenario 2: Monthly payment push
+                talkTracks.push({
+                  scenario: 'When they redirect to monthly payments',
+                  phrase: '"I\'m focused on the total price, not the monthly payment. What\'s the out-the-door number?"',
+                })
+                
+                // Scenario 3: Add-ons mandatory
+                talkTracks.push({
+                  scenario: 'When they say add-ons are mandatory',
+                  phrase: '"Can you show me which of these are required by law versus dealer policy?"',
+                })
+                
+                // Scenario 4: Manager pressure
+                talkTracks.push({
+                  scenario: 'When they bring in the manager',
+                  phrase: '"I appreciate you bringing in the manager. My number is $' + fairPrice.toLocaleString() + ' based on comps. Can we work toward that?"',
+                })
+                
+                // Scenario 5: Urgency tactic
+                talkTracks.push({
+                  scenario: 'When they create urgency',
+                  phrase: '"I\'m comparing a few options. What\'s your best OTD price today?"',
+                })
+                
+                // Scenario 6: Signing pressure
+                talkTracks.push({
+                  scenario: 'When they pressure you to sign',
+                  phrase: '"I need to review everything in writing first. Can you email me the complete breakdown?"',
+                })
+                
+                return talkTracks.map((track, i) => (
+                  <div key={i} className="bg-white border border-orange-300 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-gray-900 mb-2">{track.scenario}:</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium text-orange-900 flex-1">{track.phrase}</p>
+                      <button
+                        onClick={() => handleCopyScript(track.phrase)}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap"
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
-              return isLocked ? (
-                <PackGate key={i} packId={script.pack!} fallback={content}>
-                  {content}
-                </PackGate>
-              ) : (
-                <div key={i}>{content}</div>
-              )
-            })}
-          </div>
-        </Card>
+                ))
+              })()}
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">5. Ready-to-Send Scripts</h3>
+            <div className="space-y-4">
+              {dealPlan.scripts.map((script, i) => {
+                const isLocked = script.pack && !hasPack(script.pack) && !hasAllAccess()
+                const content = (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">{script.title}</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{script.text}</p>
+                      <button
+                        onClick={() => handleCopyScript(script.text)}
+                        className="mt-2 text-xs text-blue-600 hover:text-blue-700"
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
+                  </div>
+                )
+                return isLocked ? (
+                  <PackGate key={i} packId={script.pack!} fallback={content}>
+                    {content}
+                  </PackGate>
+                ) : (
+                  <div key={i}>{content}</div>
+                )
+              })}
+            </div>
+          </Card>
+        )}
 
         {/* 5.5. Calculate Desired OTD with Fees */}
         <Card className="p-6 mb-6">
@@ -3117,8 +3214,29 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
         {/* 6. Next Best Move */}
         <Card className="p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
           <h3 className="text-lg font-semibold mb-4">6. Next Best Move</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {variant === 'first_time' ? (
+          {variant === 'in_person' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Button
+                onClick={() => setShowSimulatorModal(true)}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Practice Dealer Simulator
+              </Button>
+              <Button
+                onClick={handleOpenOTDBuilder}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Build OTD
+              </Button>
+              <Button
+                onClick={() => router.push('/copilot/in-person/live')}
+                className="bg-white !text-black hover:bg-gray-100 md:col-span-2"
+              >
+                Open Deal Decision Advisor
+              </Button>
+            </div>
+          ) : variant === 'first_time' ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
                 onClick={() => {
                   // Scroll to the written templates section
@@ -3139,35 +3257,78 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               >
                 Use the safe written templates above
               </Button>
-            ) : (
+              <Button
+                onClick={handleOpenOTDBuilder}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Build OTD
+              </Button>
+              <Button
+                onClick={handleOpenComparison}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Compare Similar Offers
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
                 onClick={() => handleOpenCopilot()}
                 className="bg-white !text-black hover:bg-gray-100"
               >
                 Generate Best Reply in Copilot
               </Button>
-            )}
-            <Button
-              onClick={handleOpenOTDBuilder}
-              className="bg-white !text-black hover:bg-gray-100"
-            >
-              Build OTD
-            </Button>
-            <Button
-              onClick={handleOpenComparison}
-              className="bg-white !text-black hover:bg-gray-100"
-            >
-              Compare Similar Offers
-            </Button>
-          </div>
+              <Button
+                onClick={handleOpenOTDBuilder}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Build OTD
+              </Button>
+              <Button
+                onClick={handleOpenComparison}
+                className="bg-white !text-black hover:bg-gray-100"
+              >
+                Compare Similar Offers
+              </Button>
+            </div>
+          )}
         </Card>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-4">
-          <Button onClick={onAddToComparison} variant="secondary">
-            Add to Comparison
-          </Button>
-        </div>
+        {/* Action Buttons - Hide for in-person variant (non-functional comparison) */}
+        {variant !== 'in_person' && (
+          <div className="flex gap-3 pt-4">
+            <Button onClick={onAddToComparison} variant="secondary">
+              Add to Comparison
+            </Button>
+          </div>
+        )}
+
+        {/* Dealer Simulator Coming Soon Modal (In-Person Only) */}
+        {showSimulatorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="max-w-md w-full mx-4 p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Dealer Simulator (Coming Soon)</h3>
+              <p className="text-gray-700 mb-6">
+                This feature is not live yet. For real-time guidance today, use Deal Decision Advisor.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => router.push('/copilot/in-person/live')}
+                  className="flex-1"
+                >
+                  Open Deal Decision Advisor
+                </Button>
+                <Button
+                  onClick={() => setShowSimulatorModal(false)}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Extraction Diagnostics (Dev Only) */}
