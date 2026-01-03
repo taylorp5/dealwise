@@ -18,6 +18,7 @@ interface ResolveResponse {
     model: 'high' | 'med' | 'low'
   }
   error?: string
+  fallback?: 'paste_text' | 'manual'
   fallbackSuggested?: boolean
 }
 
@@ -38,8 +39,11 @@ function parseJsonLd(html: string): { data: Partial<ListingData>; confidence: Re
       if (!contentMatch) continue
       
       try {
-        const jsonData = JSON.parse(contentMatch[1])
-        const data = Array.isArray(jsonData) ? jsonData[0] : jsonData
+        let jsonData = JSON.parse(contentMatch[1])
+        // Handle arrays - process all items
+        const items = Array.isArray(jsonData) ? jsonData : [jsonData]
+        
+        for (const data of items) {
         
         // Extract from Product/Vehicle schema
         if (data['@type'] === 'Product' || data['@type'] === 'Vehicle' || data['@type'] === 'Car') {
@@ -99,31 +103,87 @@ function parseJsonLd(html: string): { data: Partial<ListingData>; confidence: Re
           }
         }
         
-        // Extract from Organization schema (dealer)
-        if (data['@type'] === 'Organization' || data['@type'] === 'AutoDealer') {
-          if (data.name) {
-            result.dealerName = data.name
-            confidence.dealer = 'high'
-          }
-          
-          // Address
-          if (data.address) {
-            const addr = typeof data.address === 'string' ? JSON.parse(data.address) : data.address
-            if (addr.addressLocality) {
-              result.dealerCity = addr.addressLocality
-              confidence.city = 'high'
+          // Extract from Organization schema (dealer/seller)
+          const orgTypes = ['Organization', 'AutoDealer', 'AutoPartsStore', 'LocalBusiness', 'Store']
+          if (orgTypes.some(type => data['@type']?.includes(type))) {
+            if (data.name && !result.dealerName) {
+              result.dealerName = data.name
+              confidence.dealer = 'high'
             }
-            if (addr.addressRegion) {
-              result.dealerState = addr.addressRegion
-            }
-            if (addr.postalCode) {
-              const zip = addr.postalCode.match(/\d{5}/)?.[0]
-              if (zip) {
-                result.zip = zip
-                confidence.zip = 'high'
+            
+            // Also check seller field
+            if (data.seller && typeof data.seller === 'object') {
+              if (data.seller.name && !result.dealerName) {
+                result.dealerName = data.seller.name
+                confidence.dealer = 'high'
+              }
+              if (data.seller.address) {
+                const addr = typeof data.seller.address === 'string' ? JSON.parse(data.seller.address) : data.seller.address
+                if (addr.addressLocality && !result.dealerCity) {
+                  result.dealerCity = addr.addressLocality
+                  confidence.city = 'high'
+                }
+                if (addr.addressRegion && !result.dealerState) {
+                  result.dealerState = addr.addressRegion
+                }
+                if (addr.postalCode && !result.zip) {
+                  const zip = String(addr.postalCode).match(/\d{5}/)?.[0]
+                  if (zip) {
+                    result.zip = zip
+                    confidence.zip = 'high'
+                  }
+                }
               }
             }
-            // Note: addressLine not in ListingData interface, skip
+            
+            // Address
+            if (data.address) {
+              const addr = typeof data.address === 'string' ? JSON.parse(data.address) : data.address
+              if (addr.addressLocality && !result.dealerCity) {
+                result.dealerCity = addr.addressLocality
+                confidence.city = 'high'
+              }
+              if (addr.addressRegion && !result.dealerState) {
+                result.dealerState = addr.addressRegion
+              }
+              if (addr.postalCode && !result.zip) {
+                const zip = String(addr.postalCode).match(/\d{5}/)?.[0]
+                if (zip) {
+                  result.zip = zip
+                  confidence.zip = 'high'
+                }
+              }
+            }
+          }
+          
+          // Also check for seller in Product/Vehicle offers
+          if ((data['@type'] === 'Product' || data['@type'] === 'Vehicle') && data.offers) {
+            const offers = Array.isArray(data.offers) ? data.offers : [data.offers]
+            for (const offer of offers) {
+              if (offer.seller && typeof offer.seller === 'object') {
+                if (offer.seller.name && !result.dealerName) {
+                  result.dealerName = offer.seller.name
+                  confidence.dealer = 'high'
+                }
+                if (offer.seller.address) {
+                  const addr = typeof offer.seller.address === 'string' ? JSON.parse(offer.seller.address) : offer.seller.address
+                  if (addr.addressLocality && !result.dealerCity) {
+                    result.dealerCity = addr.addressLocality
+                    confidence.city = 'high'
+                  }
+                  if (addr.addressRegion && !result.dealerState) {
+                    result.dealerState = addr.addressRegion
+                  }
+                  if (addr.postalCode && !result.zip) {
+                    const zip = String(addr.postalCode).match(/\d{5}/)?.[0]
+                    if (zip) {
+                      result.zip = zip
+                      confidence.zip = 'high'
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       } catch (e) {
@@ -139,7 +199,39 @@ function parseJsonLd(html: string): { data: Partial<ListingData>; confidence: Re
 }
 
 /**
- * Parse Next.js __NEXT_DATA__ blob
+ * Recursively search for a key in an object
+ */
+function findValueRecursive(obj: any, keys: string[], visited = new Set()): any {
+  if (!obj || typeof obj !== 'object' || visited.has(obj)) return undefined
+  visited.add(obj)
+  
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const result = findValueRecursive(item, keys, visited)
+      if (result !== undefined) return result
+    }
+    return undefined
+  }
+  
+  for (const key of keys) {
+    if (key in obj && obj[key] !== null && obj[key] !== undefined) {
+      return obj[key]
+    }
+  }
+  
+  // Recursively search nested objects
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === 'object') {
+      const result = findValueRecursive(value, keys, visited)
+      if (result !== undefined) return result
+    }
+  }
+  
+  return undefined
+}
+
+/**
+ * Parse Next.js __NEXT_DATA__ blob with recursive search
  */
 function parseNextData(html: string): { data: Partial<ListingData>; confidence: Record<string, 'high' | 'med' | 'low'> } {
   const result: Partial<ListingData> = {}
@@ -150,6 +242,8 @@ function parseNextData(html: string): { data: Partial<ListingData>; confidence: 
     if (!nextDataMatch) return { data: {}, confidence }
     
     const jsonData = JSON.parse(nextDataMatch[1])
+    
+    // Try direct paths first (faster)
     const props = jsonData?.props?.pageProps || jsonData?.props || {}
     
     // Extract vehicle data
@@ -203,6 +297,52 @@ function parseNextData(html: string): { data: Partial<ListingData>; confidence: 
           result.zip = zip
           confidence.zip = 'high'
         }
+      }
+    }
+    
+    // Recursive search for missing fields
+    if (!result.price) {
+      const price = findValueRecursive(jsonData, ['price', 'listPrice', 'salePrice', 'cost', 'amount'])
+      if (price) {
+        const parsed = typeof price === 'number' ? price : parseFloat(String(price).replace(/[$,]/g, ''))
+        if (parsed > 500 && parsed < 200000) {
+          result.price = Math.round(parsed)
+          confidence.price = confidence.price || 'med'
+        }
+      }
+    }
+    
+    if (!result.dealerName) {
+      const dealerName = findValueRecursive(jsonData, ['dealerName', 'dealership', 'dealer', 'seller', 'name'])
+      if (dealerName && typeof dealerName === 'string' && dealerName.length > 2 && dealerName.length < 100) {
+        result.dealerName = dealerName
+        confidence.dealer = confidence.dealer || 'med'
+      }
+    }
+    
+    if (!result.zip) {
+      const zip = findValueRecursive(jsonData, ['postalCode', 'zip', 'zipCode', 'postal'])
+      if (zip) {
+        const zipStr = String(zip).match(/\d{5}/)?.[0]
+        if (zipStr) {
+          result.zip = zipStr
+          confidence.zip = confidence.zip || 'med'
+        }
+      }
+    }
+    
+    if (!result.dealerCity) {
+      const city = findValueRecursive(jsonData, ['city', 'addressLocality', 'locality'])
+      if (city && typeof city === 'string' && city.length > 1 && city.length < 50) {
+        result.dealerCity = city
+        confidence.city = confidence.city || 'med'
+      }
+    }
+    
+    if (!result.dealerState) {
+      const state = findValueRecursive(jsonData, ['state', 'addressRegion', 'region'])
+      if (state && typeof state === 'string' && (state.length === 2 || state.length < 20)) {
+        result.dealerState = state.length === 2 ? state.toUpperCase() : state
       }
     }
   } catch (e) {
@@ -392,10 +532,11 @@ export async function POST(request: NextRequest) {
       const response = await fetch(targetUrl.toString(), {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept': 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9',
-          'Referer': 'https://www.google.com/',
+          'Referer': 'https://www.cars.com/',
           'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
         },
         redirect: 'follow',
         signal: controller.signal,
@@ -410,17 +551,29 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({
             ok: false,
             error: `Access denied (HTTP ${response.status})`,
+            fallback: 'paste_text',
             fallbackSuggested: true,
           } as ResolveResponse)
         }
         return NextResponse.json({
           ok: false,
           error: `HTTP ${response.status}`,
+          fallback: 'paste_text',
           fallbackSuggested: true,
         } as ResolveResponse)
       }
       
       html = await response.text()
+      
+      // Check if HTML is too small (likely blocked or error page)
+      if (html.length < 1000) {
+        return NextResponse.json({
+          ok: false,
+          error: 'Received incomplete page content',
+          fallback: 'paste_text',
+          fallbackSuggested: true,
+        } as ResolveResponse)
+      }
       
       // Check for blocking indicators
       const htmlLower = html.toLowerCase()
@@ -428,6 +581,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           ok: false,
           error: 'Website blocked access (captcha/cloudflare)',
+          fallback: 'paste_text',
           fallbackSuggested: true,
         } as ResolveResponse)
       }
@@ -437,12 +591,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           ok: false,
           error: 'Request timed out',
+          fallback: 'paste_text',
           fallbackSuggested: true,
         } as ResolveResponse)
       }
       return NextResponse.json({
         ok: false,
         error: fetchError.message || 'Failed to fetch URL',
+        fallback: 'paste_text',
         fallbackSuggested: true,
       } as ResolveResponse)
     }

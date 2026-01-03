@@ -382,55 +382,23 @@ export default function ListingReviewStep({
             <Button
               type="button"
               variant={isBlocked ? 'primary' : 'secondary'}
-              onClick={() => {
+              onClick={async () => {
                 const textarea = document.getElementById('paste-textarea') as HTMLTextAreaElement
                 const pastedText = textarea?.value
                 if (pastedText) {
                   try {
-                    const { parseListingText } = require('@/lib/extractors/cars')
+                    const { parseListingText } = await import('@/lib/utils/parse-listing-text')
                     const parsed = parseListingText(pastedText)
                     
                     // Debug: log parsed result
                     console.log('PASTE_PARSE_RESULT', parsed)
                     
-                    // Extract confidence and issues, but don't set them in editedData
-                    const { confidence, issues, raw, ...dataFields } = parsed
-                    
-                    // Extract candidates from raw data
-                    if (raw?.dealerNameCandidates) {
-                      setDealerNameCandidates(raw.dealerNameCandidates.map((c: any) => ({ name: c.name, score: c.score })))
-                    }
-                    if (raw?.locationCandidates) {
-                      setLocationCandidates(raw.locationCandidates.map((c: any) => ({ 
-                        city: c.city, 
-                        state: c.state, 
-                        zip: c.zip, 
-                        score: c.score 
-                      })))
-                    }
-                    
-                    // Fallback: derive dealer name from URL if not found
-                    if (!dataFields.dealerName && listingData.sourceUrl) {
-                      try {
-                        const urlObj = new URL(listingData.sourceUrl)
-                        const hostname = urlObj.hostname.replace(/^www\./, '').replace(/\.(com|net|org|us)$/, '')
-                        // Convert hostname to readable name: "victorytoyotamidtown" -> "Victory Toyota Midtown"
-                        const readable = hostname
-                          .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capitals
-                          .split(/[-_]/)
-                          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                          .join(' ')
-                        if (readable.length > 3) {
-                          dataFields.dealerName = readable
-                          setDealerNameCandidates(prev => [{ name: readable, score: 5 }, ...prev.slice(0, 4)])
-                        }
-                      } catch (e) {
-                        // Ignore URL parsing errors
-                      }
-                    }
+                    // Extract data and confidence separately
+                    const dataFields = parsed.data
+                    const confidenceScores = parsed.confidence
                     
                     // Show what was found
-                    const foundFields = Object.keys(dataFields).filter(k => dataFields[k as keyof typeof dataFields] !== undefined)
+                    const foundFields = Object.keys(dataFields).filter(k => dataFields[k as keyof typeof dataFields] !== undefined && dataFields[k as keyof typeof dataFields] !== null)
                     const foundCount = foundFields.length
                     
                     if (foundCount === 0) {
@@ -457,9 +425,6 @@ export default function ListingReviewStep({
                         vin: dataFields.vin ?? prev.vin,
                       }
                       
-                      // Debug: log form state after update
-                      console.log('FORM_STATE_AFTER_AUTOFILL', updated)
-                      
                       return updated
                     })
                     
@@ -474,11 +439,14 @@ export default function ListingReviewStep({
                     if (dataFields.dealerCity || dataFields.dealerState) {
                       message += `\n📍 Location: ${[dataFields.dealerCity, dataFields.dealerState].filter(Boolean).join(', ')}`
                     }
-                    if (issues && issues.length > 0) {
-                      message += `\n\n⚠️ Notes: ${issues.join('; ')}`
+                    if (dataFields.zip) {
+                      message += ` ${dataFields.zip}`
                     }
-                    if (confidence !== undefined) {
-                      message += `\n\nConfidence: ${(confidence * 100).toFixed(0)}%`
+                    const confidenceAvg = Object.values(confidenceScores).length > 0
+                      ? Object.values(confidenceScores).filter(c => c === 'high').length / Object.keys(confidenceScores).length
+                      : 0
+                    if (confidenceAvg > 0) {
+                      message += `\n\nConfidence: ${(confidenceAvg * 100).toFixed(0)}%`
                     }
                     message += '\n\nPlease review and edit the fields above before continuing.'
                     

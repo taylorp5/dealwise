@@ -196,19 +196,57 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
 
-      // Determine the input based on entry method
-      let requestBody: any = {
-        packVariant: mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
-      }
+      let extractedData: Partial<ListingData> | null = null
+      let requiresReview = false
+      let fallbackMessage: string | null = null
 
+      // Step 1: Extract data based on entry method
       if (entryMethod === 'url') {
-        requestBody.listingUrl = listingUrl.trim()
+        // Use /api/listing/resolve for URL extraction
+        const resolveResponse = await fetch('/api/listing/resolve', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ url: listingUrl.trim() }),
+        })
+        
+        const resolveData = await resolveResponse.json()
+        
+        if (!resolveData.ok) {
+          // Extraction failed - show fallback message
+          fallbackMessage = resolveData.error || 'Could not read this listing automatically'
+          requiresReview = true
+          extractedData = {
+            sourceUrl: listingUrl.trim(),
+            sourceSite: listingUrl.includes('cars.com') ? 'cars.com' : 'other',
+            blocked: true,
+            confidence: 0,
+            issues: [fallbackMessage],
+            fallback: resolveData.fallback || 'paste_text',
+            fallbackMessage: fallbackMessage,
+          } as any
+        } else if (resolveData.data) {
+          // Extraction succeeded - check if we need review
+          extractedData = resolveData.data
+          // Always show review step to allow user to confirm/correct
+          requiresReview = true
+        }
       } else if (entryMethod === 'paste') {
-        requestBody.listingUrl = pasteText.trim()
+        // Use parseListingText for paste mode
+        const { parseListingText } = await import('@/lib/utils/parse-listing-text')
+        const parsed = parseListingText(pasteText.trim())
+        extractedData = {
+          ...parsed.data,
+          sourceUrl: 'paste://text',
+          sourceSite: 'other',
+          confidence: Object.keys(parsed.confidence).length > 0 ? 0.5 : 0.3,
+          issues: [],
+        } as ListingData
+        requiresReview = true
       } else if (entryMethod === 'manual') {
         // Manual entry - construct confirmedData from form fields
-        requestBody.listingUrl = 'manual://entry'
-        requestBody.confirmedData = {
+        extractedData = {
+          sourceUrl: 'manual://entry',
+          sourceSite: 'manual',
           year: parseInt(manualYear),
           make: manualMake.trim(),
           model: manualModel.trim(),
@@ -220,7 +258,45 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
           dealerName: manualDealerName.trim() || undefined,
           dealerCity: manualDealerCity.trim() || undefined,
           dealerState: manualDealerState.trim() || undefined,
-        }
+          confidence: 1.0,
+          issues: [],
+        } as ListingData
+        // Manual entry doesn't need review - proceed directly
+        requiresReview = false
+      }
+
+      // Step 2: Show review step if needed, otherwise proceed to analysis
+      if (requiresReview && extractedData) {
+        setReviewListingData(extractedData)
+        setReviewBlocked(extractedData.blocked || false)
+        setShowReviewStep(true)
+        setAnalysisStartTime(null)
+        setAnalyzing(false)
+        return
+      }
+
+      // Step 3: Proceed directly to analysis (manual entry or confirmed data)
+      if (!extractedData) {
+        throw new Error('Failed to extract listing data')
+      }
+
+      const requestBody: any = {
+        packVariant: mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free',
+        listingUrl: entryMethod === 'manual' ? 'manual://entry' : listingUrl.trim() || pasteText.trim(),
+        confirmedData: {
+          price: extractedData.price,
+          year: extractedData.year,
+          make: extractedData.make,
+          model: extractedData.model,
+          trim: extractedData.trim,
+          mileage: extractedData.mileage,
+          vehicleCondition: extractedData.vehicleCondition,
+          vin: extractedData.vin,
+          dealerName: extractedData.dealerName,
+          dealerCity: extractedData.dealerCity,
+          dealerState: extractedData.dealerState,
+          zip: extractedData.zip,
+        },
       }
 
       const response = await fetch('/api/analyze-listing', {
@@ -678,12 +754,33 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
 
         {/* Review Step */}
         {showReviewStep && reviewListingData && (
-          <ListingReviewStep
-            listingData={reviewListingData}
-            onConfirm={handleReviewConfirm}
-            onCancel={handleReviewCancel}
-            blocked={reviewBlocked}
-          />
+          <>
+            {/* Fallback banner if extraction failed */}
+            {(reviewListingData as any).fallback === 'paste_text' && (
+              <Card className="mb-6 p-6 bg-amber-50 border-amber-200">
+                <div className="flex items-start gap-3">
+                  <div className="text-amber-600 text-xl">⚠️</div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-amber-900 mb-1">
+                      We couldn't auto-read this listing
+                    </h3>
+                    <p className="text-sm text-amber-800 mb-3">
+                      {(reviewListingData as any).fallbackMessage || 'The listing page couldn\'t be read automatically. Please paste the listing text or fill in details manually.'}
+                    </p>
+                    <p className="text-sm text-amber-700">
+                      <strong>Tip:</strong> Select all (Ctrl+A / Cmd+A) on the listing page, copy, and paste below. We'll extract the details automatically.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+            <ListingReviewStep
+              listingData={reviewListingData}
+              onConfirm={handleReviewConfirm}
+              onCancel={handleReviewCancel}
+              blocked={reviewBlocked}
+            />
+          </>
         )}
 
         {/* Error Display */}
