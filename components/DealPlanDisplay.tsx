@@ -104,8 +104,8 @@ function FirstTimeBuyerAdvisor({ dealPlan, listingUrl }: { dealPlan: DealPlan; l
       // Build context from deal plan
       const context = {
         state: dealPlan.otdEstimate?.assumptions?.registrationState || '',
-        vehiclePrice: dealPlan.targets.askingPrice,
-        estimatedFairPrice: dealPlan.targets.estimatedFairPrice,
+        vehiclePrice: dealPlan.targets?.askingPrice || 0,
+        estimatedFairPrice: dealPlan.targets?.estimatedFairPrice || 0,
         vehicleType: (dealPlan as any).vehicleInfo?.condition || 'used',
         hasOTD: !!dealPlan.otdEstimate?.expectedOTD,
       }
@@ -1446,6 +1446,23 @@ function InteractiveGoodDealQuestions({
 export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToComparison, diagnostics, variant = 'free' }: DealPlanDisplayProps) {
   const router = useRouter()
   
+  // Validate dealPlan structure - check if targets exist
+  if (!dealPlan || !dealPlan.targets) {
+    return (
+      <Card className="p-6 bg-red-50 border-red-200">
+        <h3 className="text-lg font-semibold text-red-900 mb-2">Analysis Error</h3>
+        <p className="text-sm text-red-800">
+          The analysis result is incomplete. Please try analyzing the listing again.
+        </p>
+        {process.env.NODE_ENV === 'development' && (
+          <pre className="mt-4 text-xs text-red-700 overflow-auto">
+            {JSON.stringify(dealPlan, null, 2)}
+          </pre>
+        )}
+      </Card>
+    )
+  }
+  
   // Variant is now passed as prop from route, not from localStorage
   // Default to 'free' if not provided
   const [showEditAssumptions, setShowEditAssumptions] = useState(false)
@@ -1475,6 +1492,11 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   // Recalculate OTD when assumptions change or on mount
   useEffect(() => {
     const { parseMoney, parsePercentToDecimal, calculateOTDRange } = require('@/lib/utils/number-parsing')
+    
+    if (!dealPlan.targets?.estimatedFairPrice) {
+      console.warn('Missing estimatedFairPrice in dealPlan.targets')
+      return
+    }
     
     const price = parseMoney(dealPlan.targets.estimatedFairPrice)
     
@@ -1536,6 +1558,11 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   // Calculate desired OTD with fees
   const calculateDesiredOTDWithFees = () => {
     const { parseMoney, parsePercentToDecimal, calculateOTD } = require('@/lib/utils/number-parsing')
+    
+    if (!dealPlan.targets?.estimatedFairPrice) {
+      alert('Invalid vehicle price')
+      return
+    }
     
     const vehiclePrice = parseMoney(dealPlan.targets.estimatedFairPrice)
     if (!vehiclePrice || vehiclePrice <= 0) {
@@ -1615,7 +1642,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
   const handleOpenOTDBuilder = () => {
     const link = dealPlan.nextMoves.otdBuilderLink
     // Set price (use askingPrice or estimatedFairPrice)
-    const price = dealPlan.targets.askingPrice || dealPlan.targets.estimatedFairPrice
+    const price = dealPlan.targets?.askingPrice || dealPlan.targets?.estimatedFairPrice
     if (price) {
       localStorage.setItem('otd_builder_price', price.toString())
       console.log('OTD Builder: Setting price:', price)
@@ -1682,8 +1709,10 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             {(() => {
               const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
               const hasFeeBreakdown = dealPlan.otdEstimate?.assumptions?.docFee?.value !== undefined
-              const priceDiff = dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice
-              const priceDiffPercent = (priceDiff / dealPlan.targets.estimatedFairPrice) * 100
+              const askingPrice = dealPlan.targets?.askingPrice || 0
+              const fairPrice = dealPlan.targets?.estimatedFairPrice || 0
+              const priceDiff = askingPrice - fairPrice
+              const priceDiffPercent = fairPrice > 0 ? (priceDiff / fairPrice) * 100 : 0
               const hasDealerRedFlags = dealPlan.leverage.points.some(p => p.strength === 'low' && p.score < 30)
               const hasTaxValidationWarning = dealPlan.otdEstimate?.assumptions?.taxRate?.confidence !== 'high'
               const hasMissingKeyInfo = !hasOTD || !hasFeeBreakdown
@@ -1852,7 +1881,7 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               <div>
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Where You Have Leverage</h4>
                 <ul className="space-y-2">
-                  {dealPlan.targets.askingPrice > dealPlan.targets.estimatedFairPrice && (
+                  {dealPlan.targets?.askingPrice && dealPlan.targets?.estimatedFairPrice && dealPlan.targets.askingPrice > dealPlan.targets.estimatedFairPrice && (
                     <li className="flex items-start gap-2 text-sm text-gray-700">
                       <span className="text-green-600 mt-0.5">✓</span>
                       <span><strong>Price vs market:</strong> Asking ${dealPlan.targets.askingPrice.toLocaleString()} vs fair ${dealPlan.targets.estimatedFairPrice.toLocaleString()} (${(dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice).toLocaleString()} above)</span>
@@ -2367,7 +2396,9 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               {(() => {
                 const mistakes = []
                 const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
-                const priceDiff = dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice
+                const askingPrice = dealPlan.targets?.askingPrice || 0
+                const fairPrice = dealPlan.targets?.estimatedFairPrice || 0
+                const priceDiff = askingPrice - fairPrice
                 const state = dealPlan.otdEstimate?.assumptions?.registrationState || ''
                 
                 // Mistake 1: Not getting written OTD
@@ -2751,8 +2782,10 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             </h3>
             {(() => {
               const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
-              const priceDiff = dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice
-              const priceDiffPercent = (priceDiff / dealPlan.targets.estimatedFairPrice) * 100
+              const askingPrice = dealPlan.targets?.askingPrice || 0
+              const fairPrice = dealPlan.targets?.estimatedFairPrice || 0
+              const priceDiff = askingPrice - fairPrice
+              const priceDiffPercent = fairPrice > 0 ? (priceDiff / fairPrice) * 100 : 0
               const hasGoodLeverage = dealPlan.leverage.points.some(p => p.strength === 'high')
               
               const strengths = []
@@ -2855,7 +2888,9 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
             <div className="space-y-3">
               {(() => {
                 const verbalLeverage = []
-                const priceDiff = dealPlan.targets.askingPrice - dealPlan.targets.estimatedFairPrice
+                const askingPrice = dealPlan.targets?.askingPrice || 0
+                const fairPrice = dealPlan.targets?.estimatedFairPrice || 0
+                const priceDiff = askingPrice - fairPrice
                 const priceDiffPercent = (priceDiff / dealPlan.targets.estimatedFairPrice) * 100
                 const hasOTD = !!dealPlan.otdEstimate?.expectedOTD
                 const hasGoodLeverage = dealPlan.leverage.points.some(p => p.strength === 'high')

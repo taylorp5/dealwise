@@ -46,6 +46,7 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
   const [reviewBlocked, setReviewBlocked] = useState(false)
   const [diagnostics, setDiagnostics] = useState<any>(null)
   const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
+  const [elapsedTime, setElapsedTime] = useState<number>(0)
 
   // Map mode to variant for DealPlanDisplay
   const variant = mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
@@ -79,6 +80,21 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
     setError(null)
     setShowReviewStep(false)
   }, [mode])
+
+  // Update elapsed time every second while analyzing
+  useEffect(() => {
+    if (!analyzing || analysisStartTime === null) {
+      setElapsedTime(0)
+      return
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - analysisStartTime) / 1000)
+      setElapsedTime(elapsed)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [analyzing, analysisStartTime])
 
   // Save analysis result to localStorage when it changes
   useEffect(() => {
@@ -643,10 +659,10 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                   <div className="flex items-center gap-3">
                     <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-blue-900">Analyzing listing...</p>
                       <p className="text-xs text-blue-700">
-                        This could take between 30-60 seconds
+                        Elapsed: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')} • This could take 30-60 seconds
                       </p>
                     </div>
                   </div>
