@@ -26,6 +26,18 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
   const [entryMethod, setEntryMethod] = useState<EntryMethod>('url')
   const [listingUrl, setListingUrl] = useState('')
   const [pasteText, setPasteText] = useState('')
+  // Manual entry fields
+  const [manualYear, setManualYear] = useState('')
+  const [manualMake, setManualMake] = useState('')
+  const [manualModel, setManualModel] = useState('')
+  const [manualPrice, setManualPrice] = useState('')
+  const [manualMileage, setManualMileage] = useState('')
+  const [manualCondition, setManualCondition] = useState<'new' | 'used' | 'cpo' | 'unknown'>('used')
+  const [manualTrim, setManualTrim] = useState('')
+  const [manualVin, setManualVin] = useState('')
+  const [manualDealerName, setManualDealerName] = useState('')
+  const [manualDealerCity, setManualDealerCity] = useState('')
+  const [manualDealerState, setManualDealerState] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<DealPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -37,23 +49,34 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
   // Map mode to variant for DealPlanDisplay
   const variant = mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
 
-  // Load saved analysis from localStorage on mount
+  // Clear all input state when switching entry methods
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storageKey = `deal_plan_${mode}`
-      const saved = localStorage.getItem(storageKey)
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          if (parsed.listingUrl && parsed.analysisResult) {
-            setListingUrl(parsed.listingUrl)
-            setAnalysisResult(parsed.analysisResult)
-          }
-        } catch (err) {
-          console.error('Failed to load saved deal plan:', err)
-        }
-      }
+    setError(null)
+    // Don't clear the current method's input, but clear others
+    if (entryMethod !== 'url') setListingUrl('')
+    if (entryMethod !== 'paste') setPasteText('')
+    if (entryMethod !== 'manual') {
+      setManualYear('')
+      setManualMake('')
+      setManualModel('')
+      setManualPrice('')
+      setManualMileage('')
+      setManualCondition('used')
+      setManualTrim('')
+      setManualVin('')
+      setManualDealerName('')
+      setManualDealerCity('')
+      setManualDealerState('')
     }
+  }, [entryMethod])
+
+  // Only load saved analysis if user explicitly wants to continue (not on mount)
+  // For now, we'll clear on mount to prevent stale data
+  useEffect(() => {
+    // Clear any stale results on mount
+    setAnalysisResult(null)
+    setError(null)
+    setShowReviewStep(false)
   }, [mode])
 
   // Save analysis result to localStorage when it changes
@@ -72,8 +95,74 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
     }
   }, [analysisResult, listingUrl, mode])
 
+  // Validation functions
+  const isValidUrl = (url: string): boolean => {
+    try {
+      const urlObj = new URL(url.trim())
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
+  const validateInput = (): { valid: boolean; error: string | null } => {
+    if (entryMethod === 'url') {
+      const url = listingUrl.trim()
+      if (!url) {
+        return { valid: false, error: 'Please enter a listing URL' }
+      }
+      if (!isValidUrl(url)) {
+        return { valid: false, error: 'Please enter a valid URL (must start with http:// or https://)' }
+      }
+      return { valid: true, error: null }
+    } else if (entryMethod === 'paste') {
+      const text = pasteText.trim()
+      if (!text) {
+        return { valid: false, error: 'Please paste listing details' }
+      }
+      if (text.length < 40) {
+        return { valid: false, error: 'Please paste more listing details (at least 40 characters)' }
+      }
+      return { valid: true, error: null }
+    } else if (entryMethod === 'manual') {
+      // Required fields: year, make, model, price, mileage, condition
+      if (!manualYear.trim()) {
+        return { valid: false, error: 'Please enter the vehicle year' }
+      }
+      if (!manualMake.trim()) {
+        return { valid: false, error: 'Please enter the vehicle make' }
+      }
+      if (!manualModel.trim()) {
+        return { valid: false, error: 'Please enter the vehicle model' }
+      }
+      if (!manualPrice.trim()) {
+        return { valid: false, error: 'Please enter the vehicle price' }
+      }
+      const price = parseFloat(manualPrice)
+      if (isNaN(price) || price <= 0) {
+        return { valid: false, error: 'Please enter a valid price (greater than 0)' }
+      }
+      if (!manualMileage.trim()) {
+        return { valid: false, error: 'Please enter the vehicle mileage' }
+      }
+      const mileage = parseFloat(manualMileage)
+      if (isNaN(mileage) || mileage < 0) {
+        return { valid: false, error: 'Please enter a valid mileage (0 or greater)' }
+      }
+      return { valid: true, error: null }
+    }
+    return { valid: false, error: 'Please select an entry method' }
+  }
+
   const handleAnalyze = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
+    
+    // Validate input before proceeding
+    const validation = validateInput()
+    if (!validation.valid) {
+      setError(validation.error || 'Please provide listing information')
+      return
+    }
     
     setAnalyzing(true)
     setError(null)
@@ -93,24 +182,24 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
       }
 
       if (entryMethod === 'url') {
-        if (!listingUrl.trim()) {
-          setError('Please enter a listing URL')
-          setAnalyzing(false)
-          return
-        }
         requestBody.listingUrl = listingUrl.trim()
       } else if (entryMethod === 'paste') {
-        if (!pasteText.trim()) {
-          setError('Please paste listing details')
-          setAnalyzing(false)
-          return
-        }
         requestBody.listingUrl = pasteText.trim()
       } else if (entryMethod === 'manual') {
-        // Manual entry - use a special URL format
+        // Manual entry - construct confirmedData from form fields
         requestBody.listingUrl = 'manual://entry'
         requestBody.confirmedData = {
-          // Will be filled by user in review step if needed
+          year: parseInt(manualYear),
+          make: manualMake.trim(),
+          model: manualModel.trim(),
+          price: parseFloat(manualPrice),
+          mileage: parseFloat(manualMileage),
+          vehicleCondition: manualCondition,
+          trim: manualTrim.trim() || undefined,
+          vin: manualVin.trim() || undefined,
+          dealerName: manualDealerName.trim() || undefined,
+          dealerCity: manualDealerCity.trim() || undefined,
+          dealerState: manualDealerState.trim() || undefined,
         }
       }
 
@@ -343,14 +432,196 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
               )}
 
               {entryMethod === 'manual' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 mb-2">
-                    Click "Analyze Listing" to start manual entry. You'll be able to enter vehicle details in the next step.
-                  </p>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-800">
+                      Enter the vehicle details below. Fields marked with <span className="text-red-500">*</span> are required.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="manual-year" className="block text-sm font-medium text-gray-700 mb-2">
+                        Year <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="manual-year"
+                        type="number"
+                        value={manualYear}
+                        onChange={(e) => setManualYear(e.target.value)}
+                        placeholder="e.g., 2020"
+                        min="1900"
+                        max={new Date().getFullYear() + 1}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-make" className="block text-sm font-medium text-gray-700 mb-2">
+                        Make <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="manual-make"
+                        type="text"
+                        value={manualMake}
+                        onChange={(e) => setManualMake(e.target.value)}
+                        placeholder="e.g., Honda"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-model" className="block text-sm font-medium text-gray-700 mb-2">
+                        Model <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="manual-model"
+                        type="text"
+                        value={manualModel}
+                        onChange={(e) => setManualModel(e.target.value)}
+                        placeholder="e.g., Civic"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-price" className="block text-sm font-medium text-gray-700 mb-2">
+                        Price ($) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="manual-price"
+                        type="number"
+                        value={manualPrice}
+                        onChange={(e) => setManualPrice(e.target.value)}
+                        placeholder="e.g., 23450"
+                        min="0"
+                        step="0.01"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Sale price (not monthly payment)</p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-mileage" className="block text-sm font-medium text-gray-700 mb-2">
+                        Mileage <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="manual-mileage"
+                        type="number"
+                        value={manualMileage}
+                        onChange={(e) => setManualMileage(e.target.value)}
+                        placeholder="e.g., 45000"
+                        min="0"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-condition" className="block text-sm font-medium text-gray-700 mb-2">
+                        Condition <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="manual-condition"
+                        value={manualCondition}
+                        onChange={(e) => setManualCondition(e.target.value as 'new' | 'used' | 'cpo' | 'unknown')}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="used">Used</option>
+                        <option value="new">New</option>
+                        <option value="cpo">Certified Pre-Owned (CPO)</option>
+                        <option value="unknown">Unknown</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-trim" className="block text-sm font-medium text-gray-700 mb-2">
+                        Trim (optional)
+                      </label>
+                      <input
+                        id="manual-trim"
+                        type="text"
+                        value={manualTrim}
+                        onChange={(e) => setManualTrim(e.target.value)}
+                        placeholder="e.g., EX-L"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-vin" className="block text-sm font-medium text-gray-700 mb-2">
+                        VIN (optional)
+                      </label>
+                      <input
+                        id="manual-vin"
+                        type="text"
+                        value={manualVin}
+                        onChange={(e) => setManualVin(e.target.value.toUpperCase())}
+                        placeholder="e.g., 1HGBH41JXMN109186"
+                        maxLength={17}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-dealer-name" className="block text-sm font-medium text-gray-700 mb-2">
+                        Dealer Name (optional)
+                      </label>
+                      <input
+                        id="manual-dealer-name"
+                        type="text"
+                        value={manualDealerName}
+                        onChange={(e) => setManualDealerName(e.target.value)}
+                        placeholder="e.g., ABC Motors"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-dealer-city" className="block text-sm font-medium text-gray-700 mb-2">
+                        Dealer City (optional)
+                      </label>
+                      <input
+                        id="manual-dealer-city"
+                        type="text"
+                        value={manualDealerCity}
+                        onChange={(e) => setManualDealerCity(e.target.value)}
+                        placeholder="e.g., Chicago"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="manual-dealer-state" className="block text-sm font-medium text-gray-700 mb-2">
+                        Dealer State (optional)
+                      </label>
+                      <input
+                        id="manual-dealer-state"
+                        type="text"
+                        value={manualDealerState}
+                        onChange={(e) => setManualDealerState(e.target.value.toUpperCase())}
+                        placeholder="e.g., IL"
+                        maxLength={2}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
-              <Button type="submit" disabled={analyzing || (entryMethod === 'url' && !listingUrl.trim()) || (entryMethod === 'paste' && !pasteText.trim())}>
+              {/* Error message above button */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              <Button type="submit" disabled={analyzing}>
                 {analyzing ? 'Analyzing...' : 'Analyze Listing'}
               </Button>
             </form>
