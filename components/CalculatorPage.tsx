@@ -124,6 +124,8 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
   // Step 3: Add-ons
   const [addOnsText, setAddOnsText] = useState('')
   const [addOns, setAddOns] = useState<AddOn[]>([])
+  // Free variant: simple numeric total
+  const [addOnsTotalNumeric, setAddOnsTotalNumeric] = useState('')
 
   // Results
   const [warnings, setWarnings] = useState<string[]>([])
@@ -359,13 +361,36 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
     setCustomFees(customFees.filter((fee) => fee.id !== id))
   }
 
+  // Check if add-ons input is "complete enough" for classification
+  const isAddOnsCompleteEnough = (text: string): boolean => {
+    if (!text.trim()) return false
+    
+    // Count line items (newline or comma separated)
+    const lines = text.split(/[\n,]/).filter((line) => line.trim())
+    if (lines.length >= 2) return true
+    
+    // Count dollar amounts
+    const dollarMatches = text.match(/\$[\d,]+\.?\d*/g)
+    if (dollarMatches && dollarMatches.length >= 2) return true
+    
+    // Check length and contains $ or 3+ digit number
+    if (text.length >= 25) {
+      if (text.includes('$') || /\d{3,}/.test(text)) {
+        return true
+      }
+    }
+    
+    return false
+  }
+
   const parseAddOns = () => {
     if (!addOnsText.trim()) {
       setAddOns([])
       return
     }
 
-    const lines = addOnsText.split('\n').filter((line) => line.trim())
+    // Support both newline and comma separation
+    const lines = addOnsText.split(/[\n,]/).filter((line) => line.trim())
     const parsed: AddOn[] = []
 
     for (const line of lines) {
@@ -408,7 +433,10 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
     const registration = parseFloat(registrationFee) || 0
     const dealer = parseFloat(dealerFees) || 0
     const customTotal = customFees.reduce((sum, fee) => sum + fee.amount, 0)
-    const addOnsTotal = addOns.reduce((sum, addon) => sum + addon.price, 0)
+    // Free variant uses numeric input, premium variants use parsed add-ons
+    const addOnsTotal = packVariant === 'free' 
+      ? (parseFloat(addOnsTotalNumeric) || 0)
+      : addOns.reduce((sum, addon) => sum + addon.price, 0)
 
     const base = price
     const taxAmount = (base * tax) / 100
@@ -816,90 +844,156 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
           {/* Step 3: Add-ons */}
           {currentStep === 'addons' && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {isFirstTimeVariant ? 'Step 3: Identify Optional Add-Ons' : 'Step 3: Add-on Detector'}
-              </h2>
+              {packVariant === 'free' ? (
+                // Free variant: Simple numeric input
+                <>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                    Step 3: Add-ons (Optional)
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Add-ons Total
+                      </label>
+                      <input
+                        type="number"
+                        value={addOnsTotalNumeric}
+                        onChange={(e) => setAddOnsTotalNumeric(e.target.value)}
+                        placeholder="0"
+                        step="0.01"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter the total cost of add-ons from the dealer worksheet.
+                        The free version does not auto-detect individual add-ons.
+                      </p>
+                    </div>
 
-              {isFirstTimeVariant && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-4">
-                  <strong>💡 Guardrail:</strong> Most add-ons are optional. Paste the worksheet line items to identify what can be removed before agreeing to OTD.
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Paste add-ons from dealer worksheet (one per line)
-                  </label>
-                  <textarea
-                    value={addOnsText}
-                    onChange={(e) => {
-                      setAddOnsText(e.target.value)
-                      parseAddOns()
-                    }}
-                    onBlur={parseAddOns}
-                    placeholder="Extended Warranty - $2,500&#10;GAP Insurance: $500&#10;Paint Protection $300"
-                    rows={6}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {addOns.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Detected Add-ons:</h3>
-                    <div className="space-y-2">
-                      {addOns.map((addon, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-lg border ${
-                            addon.classification === 'inflated'
-                              ? 'bg-red-50 border-red-200'
-                              : addon.classification === 'maybe'
-                              ? 'bg-yellow-50 border-yellow-200'
-                              : 'bg-gray-50 border-gray-200'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium text-gray-900">{addon.name}</p>
-                              <p className="text-sm text-gray-600">${addon.price.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              {addon.classification === 'inflated' && (
-                                <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">
-                                  ⚠️ Likely inflated
-                                </span>
-                              )}
-                              {addon.classification === 'maybe' && (
-                                <span className="text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                                  ⚠️ Review carefully
-                                </span>
-                              )}
-                              {addon.classification === 'normal' && (
-                                <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                  ✓ Normal
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {addon.classification === 'inflated' && isInPersonVariant && (
-                            <p className="text-xs text-red-700 mt-2">
-                              Consider negotiating removal or significant reduction.
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                    <div className="flex justify-between">
+                      <Button variant="secondary" onClick={() => setCurrentStep('fees')}>
+                        Back
+                      </Button>
+                      <Button onClick={calculateOTD}>Calculate OTD</Button>
                     </div>
                   </div>
-                )}
+                </>
+              ) : (
+                // Premium variants (FTB + In-Person): Add-on detection
+                <>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                    {isFirstTimeVariant ? 'Step 3: Identify Optional Add-Ons' : 'Step 3: Add-on Detector'}
+                  </h2>
 
-                <div className="flex justify-between">
-                  <Button variant="secondary" onClick={() => setCurrentStep('fees')}>
-                    Back
-                  </Button>
-                  <Button onClick={calculateOTD}>Calculate OTD</Button>
-                </div>
-              </div>
+                  {isFirstTimeVariant && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-4">
+                      <strong>💡 Guardrail:</strong> Most add-ons are optional. Paste the worksheet line items to identify what can be removed before agreeing to OTD.
+                    </div>
+                  )}
+
+                  {/* Part A: Instructional helper text */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm font-medium text-gray-900 mb-2">Format your add-ons using a new line or commas.</p>
+                    <p className="text-xs text-gray-700 mb-2">Example:</p>
+                    <div className="bg-white border border-gray-300 rounded p-2 text-xs font-mono text-gray-800 mb-2">
+                      Nitrogen $299<br />
+                      Paint protection $899
+                    </div>
+                    <p className="text-xs text-gray-600">—or—</p>
+                    <div className="bg-white border border-gray-300 rounded p-2 text-xs font-mono text-gray-800 mt-2">
+                      Nitrogen $299, Paint protection $899
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Paste add-ons from dealer worksheet
+                      </label>
+                      <textarea
+                        value={addOnsText}
+                        onChange={(e) => setAddOnsText(e.target.value)}
+                        placeholder="Extended Warranty - $2,500&#10;GAP Insurance: $500&#10;Paint Protection $300"
+                        rows={6}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                      {/* Part B: Helper text when input is not complete enough */}
+                      {!isAddOnsCompleteEnough(addOnsText) && addOnsText.trim() && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Add at least one full line item with a price (e.g., 'Nitrogen $299').
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Part B: Classify button (only enabled when complete enough) */}
+                    <div>
+                      <Button
+                        onClick={parseAddOns}
+                        disabled={!isAddOnsCompleteEnough(addOnsText)}
+                        className="w-full"
+                      >
+                        Classify Add-ons
+                      </Button>
+                    </div>
+
+                    {addOns.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Detected Add-ons:</h3>
+                        <div className="space-y-2">
+                          {addOns.map((addon, index) => (
+                            <div
+                              key={index}
+                              className={`p-3 rounded-lg border ${
+                                addon.classification === 'inflated'
+                                  ? 'bg-red-50 border-red-200'
+                                  : addon.classification === 'maybe'
+                                  ? 'bg-yellow-50 border-yellow-200'
+                                  : 'bg-gray-50 border-gray-200'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <p className="font-medium text-gray-900">{addon.name}</p>
+                                  <p className="text-sm text-gray-600">${addon.price.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  {addon.classification === 'inflated' && (
+                                    <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">
+                                      ⚠️ Likely inflated
+                                    </span>
+                                  )}
+                                  {addon.classification === 'maybe' && (
+                                    <span className="text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
+                                      ⚠️ Review carefully
+                                    </span>
+                                  )}
+                                  {addon.classification === 'normal' && (
+                                    <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                      ✓ Normal
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {addon.classification === 'inflated' && isInPersonVariant && (
+                                <p className="text-xs text-red-700 mt-2">
+                                  Consider negotiating removal or significant reduction.
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between">
+                      <Button variant="secondary" onClick={() => setCurrentStep('fees')}>
+                        Back
+                      </Button>
+                      <Button onClick={calculateOTD}>Calculate OTD</Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
