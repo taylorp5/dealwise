@@ -662,7 +662,7 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
                     <div className="flex-1">
                       <p className="text-sm font-medium text-blue-900">Analyzing listing...</p>
                       <p className="text-xs text-blue-700">
-                        Elapsed: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')} • This could take 30-60 seconds
+                        Elapsed: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')} • This could take 15-45 seconds
                       </p>
                     </div>
                   </div>
