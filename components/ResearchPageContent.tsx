@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
@@ -45,6 +45,8 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
   const [reviewListingData, setReviewListingData] = useState<Partial<ListingData> | null>(null)
   const [reviewBlocked, setReviewBlocked] = useState(false)
   const [diagnostics, setDiagnostics] = useState<any>(null)
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Map mode to variant for DealPlanDisplay
   const variant = mode === 'first-time' ? 'first_time' : mode === 'in-person' ? 'in_person' : 'free'
@@ -168,6 +170,29 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
     setError(null)
     setShowReviewStep(false)
     setReviewListingData(null)
+    
+    // Start countdown timer (45 seconds estimate)
+    const initialTime = 45
+    setTimeRemaining(initialTime)
+    
+    // Clear any existing timer
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+    }
+    
+    // Start countdown
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval)
+          timerIntervalRef.current = null
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    
+    timerIntervalRef.current = interval
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -223,6 +248,12 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
           setReviewBlocked(data.extractedListing.blocked || false)
           setShowReviewStep(true)
           setDiagnostics(data.diagnostics)
+          // Clear timer when showing review step
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current)
+            timerIntervalRef.current = null
+          }
+          setTimeRemaining(null)
           setAnalyzing(false)
           return
         }
@@ -240,9 +271,21 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
         setAnalysisResult(data.data || data)
       }
       
+      // Clear timer
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      setTimeRemaining(null)
       setAnalyzing(false)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze listing')
+      // Clear timer on error
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      setTimeRemaining(null)
       setAnalyzing(false)
     }
   }
@@ -290,9 +333,21 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
         setAnalysisResult(data.data || data)
       }
       
+      // Clear timer
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      setTimeRemaining(null)
       setAnalyzing(false)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze listing')
+      // Clear timer on error
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      setTimeRemaining(null)
       setAnalyzing(false)
     }
   }
@@ -618,6 +673,30 @@ export default function ResearchPageContent({ mode = 'free' }: ResearchPageConte
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* Timer/Countdown display */}
+              {analyzing && timeRemaining !== null && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">Analyzing listing...</p>
+                        <p className="text-xs text-blue-700">
+                          {timeRemaining > 0 
+                            ? `Estimated time remaining: ${timeRemaining} second${timeRemaining !== 1 ? 's' : ''}`
+                            : 'Almost done...'}
+                        </p>
+                      </div>
+                    </div>
+                    {timeRemaining > 0 && (
+                      <div className="text-2xl font-bold text-blue-600">
+                        {timeRemaining}s
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
