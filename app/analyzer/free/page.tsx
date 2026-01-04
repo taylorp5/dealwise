@@ -2,12 +2,13 @@
 
 import { Suspense } from 'react'
 import ResearchPageContent from '@/components/ResearchPageContent'
+import { isDevUIEnabled } from '@/lib/utils/dev-ui'
 
 function FreeAnalyzerContent() {
   return (
     <>
       {/* Debug label - dev only */}
-      {process.env.NODE_ENV === 'development' && (
+      {isDevUIEnabled() && (
         <div className="fixed top-20 right-4 z-50 bg-yellow-100 border-2 border-yellow-400 px-3 py-1 rounded text-xs font-mono font-bold">
           Analyzer Variant: free
         </div>

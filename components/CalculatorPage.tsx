@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getTaxRateForState, formatStateName, stateTaxRates } from '@/lib/utils/tax-rates'
 import type { TaxRateResult } from '@/lib/utils/tax-lookup'
 import { useEntitlements } from '@/hooks/useEntitlements'
+import { isDevUIEnabled } from '@/lib/utils/dev-ui'
 
 type Step = 'basics' | 'fees' | 'addons' | 'results'
 
@@ -576,7 +577,7 @@ export default function CalculatorPage({ initialVariant = 'free' }: CalculatorPa
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       {/* Dev-only debug banner */}
-      {process.env.NODE_ENV !== 'production' && packVariant !== 'free' && (
+      {isDevUIEnabled() && packVariant !== 'free' && (
         <div className="max-w-4xl mx-auto px-4 mb-4">
           <Card className="p-4 bg-yellow-50 border-yellow-300">
             <h3 className="text-sm font-semibold text-yellow-900 mb-2">🔍 Dev Debug: Entitlement Check</h3>

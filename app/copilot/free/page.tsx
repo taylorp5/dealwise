@@ -573,10 +573,17 @@ export default function FreeCopilotPage() {
             
             {result && (
               <div className="space-y-6">
-                {/* Debug Mode Info */}
-                <div className="text-xs text-gray-500 text-center pb-2 border-b border-gray-200">
-                  Mode: {(result as any).effectiveMode || 'free'} {(result as any).entitlementCheck && `(${(result as any).entitlementCheck})`}
-                </div>
+                {/* Debug Mode Info - dev only */}
+                {(() => {
+                  if (typeof window === 'undefined') return null
+                  const { isDevUIEnabled } = require('@/lib/utils/dev-ui')
+                  if (!isDevUIEnabled()) return null
+                  return (
+                    <div className="text-xs text-gray-500 text-center pb-2 border-b border-gray-200">
+                      Mode: {(result as any).effectiveMode || 'free'} {(result as any).entitlementCheck && `(${(result as any).entitlementCheck})`}
+                    </div>
+                  )
+                })()}
                 {/* Best Next Message */}
                 <div>
                   <div className="flex items-center justify-between mb-3">

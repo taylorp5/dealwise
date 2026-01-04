@@ -1454,11 +1454,16 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
         <p className="text-sm text-red-800">
           The analysis result is incomplete. Please try analyzing the listing again.
         </p>
-        {process.env.NODE_ENV === 'development' && (
-          <pre className="mt-4 text-xs text-red-700 overflow-auto">
-            {JSON.stringify(dealPlan, null, 2)}
-          </pre>
-        )}
+        {(() => {
+          if (typeof window === 'undefined') return null
+          const { isDevUIEnabled } = require('@/lib/utils/dev-ui')
+          if (!isDevUIEnabled()) return null
+          return (
+            <pre className="mt-4 text-xs text-red-700 overflow-auto">
+              {JSON.stringify(dealPlan, null, 2)}
+            </pre>
+          )
+        })()}
       </Card>
     )
   }
@@ -3408,8 +3413,12 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
       </div>
 
       {/* Extraction Diagnostics (Dev Only) */}
-      {diagnostics && typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 border-t border-gray-200 pt-6">
+      {(() => {
+        if (typeof window === 'undefined') return null
+        const { isDevUIEnabled } = require('@/lib/utils/dev-ui')
+        if (!diagnostics || !isDevUIEnabled()) return null
+        return (
+          <div className="mt-8 border-t border-gray-200 pt-6">
           <details className="group">
             <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 list-none">
               <span className="flex items-center gap-2">
@@ -3530,8 +3539,9 @@ export default function DealPlanDisplay({ dealPlan, listingUrl, onAddToCompariso
               )}
             </div>
           </details>
-        </div>
-      )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

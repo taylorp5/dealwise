@@ -14,6 +14,7 @@ import { packs as packConfigs } from '@/lib/packs/config'
 import type { PackConfig } from '@/lib/types/packs'
 import { getCopilotRouteForPack } from '@/lib/utils/copilot-routes'
 import { getAnalyzerRouteForPack, getCalculatorRouteForPack } from '@/lib/packs/entitlement-helpers'
+import { isDevUIEnabled } from '@/lib/utils/dev-ui'
 import { 
   GraduationCap, 
   DollarSign, 
@@ -56,7 +57,6 @@ export default function PacksPage() {
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const isDev = process.env.NODE_ENV === 'development'
 
   useEffect(() => {
     fetchPacks()
@@ -88,7 +88,7 @@ export default function PacksPage() {
 
   // Debug logging (dev-only)
   useEffect(() => {
-    if (isDev && user) {
+    if (isDevUIEnabled() && user) {
       console.log('[Entitlements Debug]', {
         user_id: user.id,
         entitlements,
@@ -98,7 +98,7 @@ export default function PacksPage() {
         loading: entitlementsLoading,
       })
     }
-  }, [isDev, user, entitlements, hasFirstTime, hasInPerson, hasBundle, entitlementsLoading])
+  }, [user, entitlements, hasFirstTime, hasInPerson, hasBundle, entitlementsLoading])
 
   const handleRestorePurchases = async () => {
     if (!user) {
@@ -153,11 +153,28 @@ export default function PacksPage() {
     } else if (packId === 'in_person') {
       return hasInPerson
     } else if (packId === 'bundle' || packId === 'bundle_both') {
-      // Bundle is unlocked if bundle flag is true OR both packs are unlocked
-      return hasBundle || (hasFirstTime && hasInPerson)
+      // Bundle is unlocked ONLY if bundle flag is true
+      return hasBundle
     }
     // Fallback to old system for other packs
     return userPacks.some((p) => p.packId === packId && p.isUnlocked)
+  }
+
+  const getBundleStatus = (): { message: string; showPurchase: boolean } => {
+    // If bundle is purchased, show unlocked
+    if (hasBundle) {
+      return { message: 'You have access', showPurchase: false }
+    }
+    // If user owns both packs individually, show "You already own both packs"
+    if (hasFirstTime && hasInPerson) {
+      return { message: 'You already own both packs', showPurchase: false }
+    }
+    // If user owns exactly one pack, show "Complete your bundle" (optional upsell)
+    if (hasFirstTime || hasInPerson) {
+      return { message: 'Complete your bundle', showPurchase: true }
+    }
+    // Otherwise, show normal purchase option
+    return { message: 'Best value', showPurchase: true }
   }
 
   const [error, setError] = useState<string | null>(null)
@@ -328,6 +345,7 @@ export default function PacksPage() {
     const isComingSoon = pack.comingSoon === true
     const isRecommended = pack.id === 'first_time'
     const isBundle = pack.id === 'bundle'
+    const bundleStatus = isBundle ? getBundleStatus() : null
     const Icon = getPackIcon(pack.id)
     const valueProp = getPackValueProp(pack)
     const benefits = getPackBenefits(pack)
@@ -378,6 +396,11 @@ export default function PacksPage() {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent-hover border border-accent/30">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       You have access
+                    </span>
+                  ) : isBundle && bundleStatus && !bundleStatus.showPurchase ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      {bundleStatus.message}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-background text-brand-muted border border-brand-border">
@@ -435,6 +458,16 @@ export default function PacksPage() {
               <Button variant="secondary" className="w-full opacity-50" disabled>
                 Notify Me When Available
               </Button>
+            </div>
+          ) : isBundle && bundleStatus && !bundleStatus.showPurchase && !unlocked ? (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium mb-3 border border-blue-200">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                {bundleStatus.message}
+              </div>
+              <p className="text-xs text-brand-muted">
+                You have access to all bundle features through your individual packs.
+              </p>
             </div>
           ) : unlocked ? (
             <>
@@ -512,6 +545,18 @@ export default function PacksPage() {
             <div>
               {/* Price Display */}
               <div className="mb-4">
+                {isBundle && bundleStatus && bundleStatus.message !== 'Best value' && (
+                  <div className="mb-3 text-center">
+                    <p className="text-sm font-medium text-brand-ink mb-1">
+                      {bundleStatus.message}
+                    </p>
+                    {bundleStatus.message === 'Complete your bundle' && (
+                      <p className="text-xs text-brand-muted">
+                        Add the bundle to unlock both packs at a discount
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-baseline justify-center space-x-1 mb-3">
                   <span className="text-2xl font-bold text-brand-ink">
                     ${PACK_PRICES[pack.id] || '—'}
@@ -529,7 +574,9 @@ export default function PacksPage() {
                   disabled={loading || entitlementsLoading}
                 >
                   <Lock className="w-4 h-4 mr-2" />
-                  Unlock This Pack
+                  {isBundle && bundleStatus?.message === 'Complete your bundle' 
+                    ? 'Complete Your Bundle' 
+                    : 'Unlock This Pack'}
                 </Button>
                 <p className="text-xs text-center text-brand-muted/80">
                   One-time unlock • Lifetime access
@@ -605,7 +652,7 @@ export default function PacksPage() {
         )}
 
         {/* Dev-only: Restore Purchases Button */}
-        {isDev && user && (
+        {isDevUIEnabled() && user && (
           <div className="max-w-2xl mx-auto mb-8">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
@@ -626,7 +673,7 @@ export default function PacksPage() {
                   Restore Purchases
                 </Button>
               </div>
-              {isDev && (
+              {isDevUIEnabled() && (
                 <div className="mt-3 pt-3 border-t border-blue-200">
                   <p className="text-xs font-mono text-blue-800 mb-1">
                     <strong>Debug Info:</strong>

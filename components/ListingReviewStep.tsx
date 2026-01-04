@@ -516,92 +516,99 @@ export default function ListingReviewStep({
           </p>
         )}
 
-        {/* Debug section */}
-        <div className="mt-4 border-t border-gray-200 pt-4">
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="text-xs text-gray-500 hover:text-gray-700"
-          >
-            {showDebug ? '▼' : '▶'} Debug Info
-          </button>
-          {showDebug && (
-            <div className="mt-2 bg-gray-50 rounded-lg p-3 text-xs space-y-2">
-              <p className="font-medium mb-2">Extraction Details:</p>
-              <p>Confidence: {(confidence * 100).toFixed(0)}%</p>
-              
-              {/* Fetch diagnostics */}
-              {(listingData as any).fetchInfo && (
-                <div>
-                  <p className="font-medium">Fetch Info:</p>
-                  <p className="text-gray-600">Final URL: {(listingData as any).fetchInfo.finalUrl || listingData.sourceUrl}</p>
-                  {(listingData as any).fetchInfo.pageTitle && (
-                    <p className="text-gray-600">Page Title: "{(listingData as any).fetchInfo.pageTitle}"</p>
+        {/* Debug section - dev only */}
+        {(() => {
+          if (typeof window === 'undefined') return null
+          const { isDevUIEnabled } = require('@/lib/utils/dev-ui')
+          if (!isDevUIEnabled()) return null
+          return (
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                {showDebug ? '▼' : '▶'} Debug Info
+              </button>
+              {showDebug && (
+                <div className="mt-2 bg-gray-50 rounded-lg p-3 text-xs space-y-2">
+                  <p className="font-medium mb-2">Extraction Details:</p>
+                  <p>Confidence: {(confidence * 100).toFixed(0)}%</p>
+                  
+                  {/* Fetch diagnostics */}
+                  {(listingData as any).fetchInfo && (
+                    <div>
+                      <p className="font-medium">Fetch Info:</p>
+                      <p className="text-gray-600">Final URL: {(listingData as any).fetchInfo.finalUrl || listingData.sourceUrl}</p>
+                      {(listingData as any).fetchInfo.pageTitle && (
+                        <p className="text-gray-600">Page Title: "{(listingData as any).fetchInfo.pageTitle}"</p>
+                      )}
+                      {(listingData as any).fetchInfo.pagePreview && (
+                        <p className="text-gray-600">Preview: "{(listingData as any).fetchInfo.pagePreview}..."</p>
+                      )}
+                    </div>
                   )}
-                  {(listingData as any).fetchInfo.pagePreview && (
-                    <p className="text-gray-600">Preview: "{(listingData as any).fetchInfo.pagePreview}..."</p>
+                  
+                  {listingData.raw?.platform && (
+                    <div>
+                      <p className="font-medium">Platform:</p>
+                      <p className="text-gray-600">{listingData.raw.platform}</p>
+                    </div>
                   )}
+                  
+                  {listingData.raw?.strategies && (
+                    <div>
+                      <p className="font-medium">Strategies Used:</p>
+                      <p className="text-gray-600">{listingData.raw.strategies.join(' → ')}</p>
+                      <p className="text-gray-500 mt-1">
+                        Winner: <strong>{listingData.raw.strategies[0] || 'none'}</strong>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {listingData.raw?.priceCandidates && listingData.raw.priceCandidates.length > 0 && (
+                    <div>
+                      <p className="font-medium">Price Candidates (Ranked):</p>
+                      <ul className="list-disc list-inside text-gray-600 space-y-1">
+                        {listingData.raw.priceCandidates.map((candidate: any, i: number) => (
+                          <li key={i} className={i === 0 ? 'font-semibold' : ''}>
+                            ${candidate.value.toLocaleString()} ({candidate.label}) - Score: {candidate.score.toFixed(0)}
+                            {candidate.isLikelyMonthlyPayment && <span className="text-red-600 ml-1">⚠️ Monthly</span>}
+                            {candidate.isLikelyMsrp && <span className="text-yellow-600 ml-1">MSRP</span>}
+                            {candidate.isLikelyConditional && <span className="text-orange-600 ml-1">Conditional</span>}
+                            <br />
+                            <span className="text-gray-500 text-xs ml-4">"{candidate.context.substring(0, 60)}..."</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {listingData.raw?.mileageCandidates && listingData.raw.mileageCandidates.length > 0 && (
+                    <div>
+                      <p className="font-medium">Mileage Candidates:</p>
+                      <ul className="list-disc list-inside text-gray-600 space-y-1">
+                        {listingData.raw.mileageCandidates.map((candidate: any, i: number) => (
+                          <li key={i}>
+                            {candidate.value.toLocaleString()} mi ({candidate.label}) - Score: {candidate.score.toFixed(0)}
+                            <br />
+                            <span className="text-gray-500 text-xs ml-4">"{candidate.context.substring(0, 50)}..."</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-gray-600 hover:text-gray-800">Full Raw Data</summary>
+                    <pre className="mt-2 text-xs overflow-auto max-h-40 bg-white p-2 rounded border">
+                      {JSON.stringify(listingData.raw, null, 2)}
+                    </pre>
+                  </details>
                 </div>
               )}
-              
-              {listingData.raw?.platform && (
-                <div>
-                  <p className="font-medium">Platform:</p>
-                  <p className="text-gray-600">{listingData.raw.platform}</p>
-                </div>
-              )}
-              
-              {listingData.raw?.strategies && (
-                <div>
-                  <p className="font-medium">Strategies Used:</p>
-                  <p className="text-gray-600">{listingData.raw.strategies.join(' → ')}</p>
-                  <p className="text-gray-500 mt-1">
-                    Winner: <strong>{listingData.raw.strategies[0] || 'none'}</strong>
-                  </p>
-                </div>
-              )}
-              
-              {listingData.raw?.priceCandidates && listingData.raw.priceCandidates.length > 0 && (
-                <div>
-                  <p className="font-medium">Price Candidates (Ranked):</p>
-                  <ul className="list-disc list-inside text-gray-600 space-y-1">
-                    {listingData.raw.priceCandidates.map((candidate: any, i: number) => (
-                      <li key={i} className={i === 0 ? 'font-semibold' : ''}>
-                        ${candidate.value.toLocaleString()} ({candidate.label}) - Score: {candidate.score.toFixed(0)}
-                        {candidate.isLikelyMonthlyPayment && <span className="text-red-600 ml-1">⚠️ Monthly</span>}
-                        {candidate.isLikelyMsrp && <span className="text-yellow-600 ml-1">MSRP</span>}
-                        {candidate.isLikelyConditional && <span className="text-orange-600 ml-1">Conditional</span>}
-                        <br />
-                        <span className="text-gray-500 text-xs ml-4">"{candidate.context.substring(0, 60)}..."</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {listingData.raw?.mileageCandidates && listingData.raw.mileageCandidates.length > 0 && (
-                <div>
-                  <p className="font-medium">Mileage Candidates:</p>
-                  <ul className="list-disc list-inside text-gray-600 space-y-1">
-                    {listingData.raw.mileageCandidates.map((candidate: any, i: number) => (
-                      <li key={i}>
-                        {candidate.value.toLocaleString()} mi ({candidate.label}) - Score: {candidate.score.toFixed(0)}
-                        <br />
-                        <span className="text-gray-500 text-xs ml-4">"{candidate.context.substring(0, 50)}..."</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              <details className="mt-2">
-                <summary className="cursor-pointer text-gray-600 hover:text-gray-800">Full Raw Data</summary>
-                <pre className="mt-2 text-xs overflow-auto max-h-40 bg-white p-2 rounded border">
-                  {JSON.stringify(listingData.raw, null, 2)}
-                </pre>
-              </details>
             </div>
-          )}
-        </div>
+          )
+        })()}
       </div>
     </Card>
   )
