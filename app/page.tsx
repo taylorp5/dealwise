@@ -135,7 +135,7 @@ export default function Home() {
 
           {/* CTAs - Primary filled blue, secondary outline */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-3">
-            <Link href="/copilot/free" className="group">
+            <Link href="/packs" className="group">
               <Button size="lg" variant="primary" className="w-full sm:w-auto px-10 py-3.5 !bg-brand-blue !text-white hover:!bg-brand-blue-hover shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] hover:shadow-[0_6px_20px_0_rgba(37,99,235,0.45)] transition-all duration-200 font-semibold border-0">
                 Start Car Negotiation
                 <ArrowRight className="w-4 h-4 ml-2 inline group-hover:translate-x-1 transition-transform text-white" />
