@@ -88,58 +88,44 @@ export default function InPersonCopilotModePicker() {
             </div>
           </Card>
 
-          {/* Dealer Simulation - Coming Soon */}
-          <Card className="p-8 bg-gradient-to-br from-slate-50 to-slate-100/50 border-2 border-slate-200 relative overflow-hidden">
-            {/* Subtle gradient overlay */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-accent/5 rounded-full blur-2xl opacity-50"></div>
+          {/* Live Pressure Mode - V2 Feature */}
+          <Card className="p-8 hover:shadow-lg transition-shadow">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
+                <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Live Pressure Mode</h2>
+              <p className="text-gray-600">Practice handling dealer pressure</p>
+            </div>
             
-            <div className="relative">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-slate-600" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-xl font-bold text-gray-900">Dealer Simulation (Coming Soon)</h2>
-                    <span className="px-2 py-0.5 text-xs font-semibold text-slate-700 bg-slate-200 border border-slate-300 rounded-md">
-                      Coming Soon
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Practice negotiating with a realistic dealer before you step into the showroom.
-                  </p>
-                </div>
-              </div>
+            <p className="text-sm text-gray-700 mb-6 text-center max-w-md mx-auto">
+              Interactive simulation where you respond to dealer pressure tactics. Get real-time feedback on your responses and see how they affect negotiation leverage.
+            </p>
 
-              <ul className="space-y-2 mb-4 ml-16">
-                <li className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="text-slate-500 mt-0.5">•</span>
-                  <span>Simulate real dealer responses to your offers</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="text-slate-500 mt-0.5">•</span>
-                  <span>Practice handling add-ons, manager pressure, and urgency tactics</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="text-slate-500 mt-0.5">•</span>
-                  <span>Get feedback on how to strengthen your responses</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="text-slate-500 mt-0.5">•</span>
-                  <span>Build confidence before negotiating in person</span>
-                </li>
-              </ul>
+            <ul className="space-y-2 mb-6 text-sm text-gray-700 max-w-md mx-auto">
+              <li className="flex items-start gap-2">
+                <span className="text-orange-500 mt-0.5">•</span>
+                <span>Practice responding to scarcity, authority, and urgency tactics</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-orange-500 mt-0.5">•</span>
+                <span>See real-time leverage meter updates</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-orange-500 mt-0.5">•</span>
+                <span>Get instant feedback on strong vs. weak responses</span>
+              </li>
+            </ul>
 
-              <div className="ml-16 pt-4 border-t border-slate-200">
-                <p className="text-xs text-gray-600 italic">
-                  Included with this pack when released. No additional purchase required.
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  This feature is designed for preparation — not live dealership use.
-                </p>
-              </div>
+            <div className="flex justify-center">
+              <Button
+                onClick={() => router.push('/copilot/in-person/live-pressure')}
+                className="w-full max-w-xs"
+              >
+                Start Practice
+              </Button>
             </div>
           </Card>
         </div>
