@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useEntitlements } from '@/hooks/useEntitlements'
@@ -30,7 +30,7 @@ const SUGGESTED_REPLIES = [
   "Can you send me an OTD breakdown?",
 ]
 
-export default function LivePressureModePage() {
+function LivePressureModeContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -443,6 +443,21 @@ export default function LivePressureModePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LivePressureModePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LivePressureModeContent />
+    </Suspense>
   )
 }
 
